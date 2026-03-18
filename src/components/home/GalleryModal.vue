@@ -31,6 +31,7 @@ const closeLightbox = () => {
 }
 
 const modalRef = ref<HTMLElement | null>(null)
+const isLoading = ref(true)
 let isAnimating = false
 
 watch(() => props.isOpen, async (newVal) => {
@@ -38,16 +39,32 @@ watch(() => props.isOpen, async (newVal) => {
     shuffleImages()
     document.documentElement.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
+    isLoading.value = true
     await nextTick()
     
-    // Animate background and modal container
+    // Animate background and modal container immediately
     gsap.fromTo(modalRef.value, 
       { opacity: 0, backdropFilter: 'blur(0px)' }, 
       { opacity: 1, backdropFilter: 'blur(15px)', duration: 0.6, ease: 'power2.out' }
     )
+
+    // Preload images
+    const loadPromises = displayImages.value.map(src => {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.src = src
+        img.onload = resolve
+        img.onerror = resolve
+      })
+    })
+
+    await Promise.all(loadPromises)
+    isLoading.value = false
+
+    await nextTick()
     
-    // Animate items and bottom close button
-    gsap.fromTo('.gallery-modal__item, .gallery-modal__close-bottom',
+    // Animate items and bottom close button only after loading
+    gsap.fromTo('.gallery-modal__grid:not(.gallery-modal__grid--skeleton) .gallery-modal__item, .gallery-modal__close-bottom',
       { y: 80, opacity: 0, scale: 0.8 },
       { y: 0, opacity: 1, scale: 1, duration: 0.8, stagger: 0.08, ease: 'back.out(1.2)' }
     )
@@ -61,7 +78,7 @@ const close = () => {
   if (isAnimating) return
   isAnimating = true
   
-  gsap.to('.gallery-modal__item', {
+  gsap.to('.gallery-modal__grid:not(.gallery-modal__grid--skeleton) .gallery-modal__item, .gallery-modal__close-bottom', {
     y: 40, opacity: 0, scale: 0.9, duration: 0.4, stagger: 0.03, ease: 'power2.in'
   })
   
@@ -90,7 +107,13 @@ const close = () => {
         <h2 class="gallery-modal__title title-display text-accent">Nuestra Galería</h2>
         <p class="gallery-modal__subtitle">Cada bocado es una obra de arte. Explora el verdadero <em>Crunch</em>.</p>
         
-        <div class="gallery-modal__grid">
+        <!-- Skeleton Grid -->
+        <div v-if="isLoading" class="gallery-modal__grid gallery-modal__grid--skeleton">
+          <div v-for="n in 20" :key="'skel-' + n" :class="['gallery-modal__item', 'gallery-modal__skeleton', `gallery-modal__item--${n-1}`]"></div>
+        </div>
+
+        <!-- Actual Grid -->
+        <div v-show="!isLoading" class="gallery-modal__grid">
           <div 
             v-for="(img, index) in displayImages" 
             :key="index" 
@@ -104,7 +127,7 @@ const close = () => {
           </div>
         </div>
 
-        <div class="gallery-modal__footer">
+        <div v-show="!isLoading" class="gallery-modal__footer">
           <button class="gallery-modal__close-bottom btn btn--primary" @click="close">
             <i class="fa-solid fa-xmark"></i> Cerrar Galería
           </button>
@@ -268,6 +291,14 @@ const close = () => {
     }
   }
 
+  &__skeleton {
+    background: linear-gradient(90deg, rgba($color-primary, 0.1) 25%, rgba($color-primary, 0.25) 50%, rgba($color-primary, 0.1) 75%);
+    background-size: 200% 100%;
+    animation: skeletonLoading 1.5s infinite;
+    pointer-events: none;
+    box-shadow: none;
+  }
+
   &__hover-overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -367,5 +398,10 @@ const close = () => {
 @keyframes zoomIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes skeletonLoading {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 </style>

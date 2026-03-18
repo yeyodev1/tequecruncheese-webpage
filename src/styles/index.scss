@@ -1,0 +1,133 @@
+@use "sass:color";
+@use "sass:math";
+
+@import 'colorVariables.module.scss';
+@import 'fonts.module.scss';
+
+@function _to-percent($value) {
+  @if type-of($value) == 'number' and unit($value) == '%' {
+    @return $value;
+  }
+  @return $value * 1%;
+}
+
+@function lighten($c, $amount, $method: 'adjust') {
+  $pct: _to-percent($amount);
+  @if $method == 'scale' {
+    @return color.scale($c, $lightness: $pct);
+  }
+  @return color.adjust($c, $lightness: $pct);
+}
+
+@function darken($c, $amount, $method: 'adjust') {
+  $pct: _to-percent($amount);
+  @if $method == 'scale' {
+    @return color.scale($c, $lightness: -$pct);
+  }
+  @return color.adjust($c, $lightness: -$pct);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+  font-family: $font-principal;
+  color: $text-primary;
+  background-color: $white;
+  -webkit-font-smoothing: antialiased;
+}
+
+// Spacing (Mobile First)
+$spacing-xs: 0.5rem;
+$spacing-sm: 1rem;
+$spacing-md: 1.5rem;
+$spacing-lg: 2rem;
+$spacing-xl: 3rem;
+$spacing-xxl: 5rem;
+
+// Breakpoints
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+
+// Borders & Radii
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 16px;
+$border-radius-xl: 24px;
+$border-radius-pill: 9999px;
+
+// Z-index
+$z-index-nav: 1000;
+$z-index-modal: 2000;
+$z-index-toast: 3000;
+
+// Mixins
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == 'sm' { @media (min-width: $breakpoint-sm) { @content; } }
+  @else if $breakpoint == 'md' { @media (min-width: $breakpoint-md) { @content; } }
+  @else if $breakpoint == 'lg' { @media (min-width: $breakpoint-lg) { @content; } }
+  @else if $breakpoint == 'xl' { @media (min-width: $breakpoint-xl) { @content; } }
+}
+
+@mixin glass($opacity: 0.7, $blur: 12px, $border-color: rgba(255, 255, 255, 0.2), $bg-color: rgba(255, 255, 255, 0.7)) {
+  background: $bg-color;
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid $border-color;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+@mixin heading-1 {
+  font-family: $font-secondary;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  @include respond-to('md') { font-size: 4rem; }
+}
+
+@mixin heading-2 {
+  font-family: $font-secondary;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  @include respond-to('md') { font-size: 3rem; }
+}
+
+.title-display { @include heading-1; }
+.title-section { @include heading-2; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-sm $spacing-lg;
+  border-radius: 9999px;
+  font-family: $font-secondary;
+  font-weight: 600;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+
+  &--primary {
+    background-color: $color-secondary;
+    color: $white;
+    box-shadow: 0 4px 12px rgba($color-secondary, 0.4);
+
+    &:hover {
+      background-color: darken(#F3923E, 10%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba($color-secondary, 0.5);
+    }
+  }
+}

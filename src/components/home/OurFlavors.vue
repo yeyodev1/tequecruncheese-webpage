@@ -117,7 +117,7 @@ onUnmounted(() => {
             Impresiona a tus invitados con nuestras monumentales bandejas de <strong>SOLO QUESO</strong>. 
             Calidad premium, salsa inagotable y una crujencia inigualable para ser el centro de atención en tu evento.
           </p>
-          <button class="btn btn--outline mt-md" style="border-color: #572612; color: #572612;" @click="isGalleryOpen = true">Ver Galería</button>
+          <button class="btn btn--primary mt-md" @click="isGalleryOpen = true">Ver Galería</button>
         </div>
       </article>
 

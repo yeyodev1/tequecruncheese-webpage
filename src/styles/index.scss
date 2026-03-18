@@ -130,4 +130,14 @@ $z-index-toast: 3000;
       box-shadow: 0 6px 16px rgba($color-secondary, 0.5);
     }
   }
+
+  &--outline {
+    background-color: transparent;
+    border: 2px solid currentColor;
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+  }
 }

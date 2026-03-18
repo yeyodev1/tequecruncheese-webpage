@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
+import GalleryModal from './GalleryModal.vue'
+
 import img1 from '@/assets/stock/DSC06085.jpg'
 import img2 from '@/assets/stock/DSC06129.jpg'
 import img3 from '@/assets/stock/DSC06140.jpg'
@@ -21,6 +23,8 @@ const flavors = [
 
 const sectionRef = ref<HTMLElement | null>(null)
 let ctx: gsap.Context
+
+const isGalleryOpen = ref(false)
 
 onMounted(() => {
   ctx = gsap.context(() => {
@@ -113,11 +117,13 @@ onUnmounted(() => {
             Impresiona a tus invitados con nuestras monumentales bandejas de <strong>SOLO QUESO</strong>. 
             Calidad premium, salsa inagotable y una crujencia inigualable para ser el centro de atención en tu evento.
           </p>
-          <button class="btn btn--outline mt-md" style="border-color: #572612; color: #572612;">Ver Galería</button>
+          <button class="btn btn--outline mt-md" style="border-color: #572612; color: #572612;" @click="isGalleryOpen = true">Ver Galería</button>
         </div>
       </article>
 
     </div>
+    
+    <GalleryModal :isOpen="isGalleryOpen" @close="isGalleryOpen = false" />
   </section>
 </template>
 

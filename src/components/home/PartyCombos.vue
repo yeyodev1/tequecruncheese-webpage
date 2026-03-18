@@ -140,7 +140,9 @@ onUnmounted(() => {
           </ul>
           
           <div class="party-card__footer mt-xl text-center">
-             <button class="btn btn--outline" style="border-color: #572612; color: #572612; width: 100%;">Planifica tu Evento</button>
+             <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--outline" style="border-color: #572612; color: #572612; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+               <i class="fa-brands fa-whatsapp"></i> Planifica tu Evento
+             </a>
           </div>
         </article>
       </div>

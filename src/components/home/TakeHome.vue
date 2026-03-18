@@ -140,7 +140,9 @@ onUnmounted(() => {
         </ul>
 
         <div class="take-home__action">
-          <button class="btn btn--primary take-home__btn">Reserva tu Bandeja</button>
+          <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--primary take-home__btn">
+            <i class="fa-brands fa-whatsapp"></i> Reserva tu Bandeja
+          </a>
         </div>
       </div>
     </div>

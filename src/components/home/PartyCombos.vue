@@ -6,6 +6,15 @@ import bgImage from '@/assets/stock/DSC06166.jpg'
 
 gsap.registerPlugin(ScrollTrigger)
 
+const waEvento = 'https://wa.me/593963237880?text=' + encodeURIComponent(
+  'Hola TequeCruncheese! 👋 Quisiera planificar un evento con sus tequeños artesanales.\n\n' +
+  '¿Me pueden informar sobre:\n' +
+  '• Opciones de cajas y combos disponibles\n' +
+  '• Cantidades mínimas para eventos\n' +
+  '• Precios y disponibilidad\n\n' +
+  '¡Gracias!'
+)
+
 const combos = [
   { name: 'Crunch Box', desc: 'Tus sabores favoritos, cuidadosamente seleccionados para una explosión de sabor compacta e ideal para antojos.' },
   { name: 'Premium Mixt', desc: 'El balance perfecto para compartir la verdadera experiencia TequeCruncheese con tus seres queridos.' },
@@ -140,7 +149,7 @@ onUnmounted(() => {
           </ul>
           
           <div class="party-card__footer mt-xl text-center">
-             <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--outline" style="border-color: #572612; color: #572612; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+             <a :href="waEvento" target="_blank" rel="noopener" class="btn btn--outline" style="border-color: #572612; color: #572612; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;">
                <i class="fa-brands fa-whatsapp"></i> Planifica tu Evento
              </a>
           </div>

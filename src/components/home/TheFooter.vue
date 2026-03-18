@@ -104,10 +104,9 @@ const waLink = 'https://wa.me/593963237880'
   }
 
   &__logo {
-    height: 64px;
+    height: 80px;
     width: auto;
     margin-bottom: $spacing-lg;
-    filter: brightness(0) invert(1);
   }
 
   &__tagline {
@@ -131,15 +130,18 @@ const waLink = 'https://wa.me/593963237880'
   &__social-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
+    gap: 8px;
+    padding: 9px 20px;
     border-radius: 9999px;
-    border: 1px solid rgba($color-primary, 0.5);
+    border: 1.5px solid rgba($color-primary, 0.6);
     color: $color-primary;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
+    text-decoration: none;
     transition: all 0.2s ease;
+
+    i { font-size: 1.1rem; }
 
     &:hover {
       background-color: $color-primary;
@@ -175,26 +177,32 @@ const waLink = 'https://wa.me/593963237880'
 
   &__link {
     display: inline-flex;
-    align-items: flex-start;
-    gap: 8px;
-    color: rgba($white, 0.7);
-    font-size: 0.9rem;
+    align-items: center;
+    gap: 10px;
+    color: rgba($white, 0.75);
+    font-size: 0.95rem;
     line-height: 1.5;
-    padding: 3px 0;
+    padding: 4px 0;
+    text-decoration: none;
     transition: color 0.2s ease, gap 0.2s ease;
 
     i {
-      margin-top: 3px;
       flex-shrink: 0;
-      color: rgba($color-primary, 0.7);
-      transition: color 0.2s ease;
+      font-size: 1rem;
+      width: 18px;
+      text-align: center;
+      color: $color-primary;
+      transition: color 0.2s ease, transform 0.2s ease;
     }
 
     &:hover {
       color: $white;
-      gap: 10px;
+      gap: 13px;
 
-      i { color: $color-primary; }
+      i {
+        color: lighten($color-primary, 10%);
+        transform: translateX(2px);
+      }
     }
 
     &--break {

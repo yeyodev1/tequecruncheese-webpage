@@ -56,9 +56,9 @@ onUnmounted(() => {
 
       <!-- Desktop Nav -->
       <nav class="header__nav header__nav--desktop">
-        <a href="#about" class="header__link" @click="scrollToSection($event, 'about')">Nuestra Historia</a>
-        <a href="#products" class="header__link" @click="scrollToSection($event, 'products')">Los Tequeños</a>
-        <a href="#contact" class="header__link" @click="scrollToSection($event, 'contact')">Contacto</a>
+        <a href="#sabores" class="header__link" @click="scrollToSection($event, 'sabores')">Sabores</a>
+        <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
+        <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
       </nav>
 
       <div class="header__actions header__actions--desktop">
@@ -83,9 +83,9 @@ onUnmounted(() => {
     <!-- Mobile Nav -->
     <div :class="['header__mobile-menu', { 'header__mobile-menu--open': isMobileMenuOpen }]">
       <nav class="header__mobile-nav">
-        <a href="#about" class="header__link" @click="scrollToSection($event, 'about')">Nuestra Historia</a>
-        <a href="#products" class="header__link" @click="scrollToSection($event, 'products')">Los Tequeños</a>
-        <a href="#contact" class="header__link" @click="scrollToSection($event, 'contact')">Contacto</a>
+        <a href="#sabores" class="header__link" @click="scrollToSection($event, 'sabores')">Sabores</a>
+        <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
+        <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
         <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary header__mobile-btn" style="text-decoration:none;">
           <i class="fa-brands fa-whatsapp"></i> Pide Ahora
         </a>

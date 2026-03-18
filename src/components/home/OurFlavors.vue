@@ -41,31 +41,47 @@ onMounted(() => {
       ease: 'power3.out'
     })
 
-    // Grid Cards Animation
-    gsap.from('.flavor-card', {
-      scrollTrigger: {
-        trigger: '.flavors__grid',
-        start: 'top 80%',
-      },
-      y: 60,
-      opacity: 0,
-      duration: 1.2,
-      stagger: 0.1,
-      ease: 'back.out(1.2)'
-    })
+    // Grid Cards Animation — exclude callout to avoid double-animation conflict
+    gsap.fromTo('.flavor-card:not(.flavor-card--callout)',
+      { y: 60, opacity: 0 },
+      {
+        scrollTrigger: {
+          trigger: '.flavors__grid',
+          start: 'top 80%',
+        },
+        y: 0,
+        opacity: 1,
+        duration: 1.2,
+        stagger: 0.1,
+        ease: 'back.out(1.2)'
+      }
+    )
 
-    // Callout Animation
-    gsap.from('.flavor-card--callout', {
-      scrollTrigger: {
-        trigger: '.flavor-card--callout',
-        start: 'top 90%',
-      },
-      scale: 0.98,
-      y: 30,
-      opacity: 0,
-      duration: 1,
-      ease: 'power2.out'
-    })
+    // Callout Animation — always resolves to visible
+    gsap.fromTo('.flavor-card--callout',
+      { scale: 0.98, y: 30, opacity: 0 },
+      {
+        scrollTrigger: {
+          trigger: '.flavor-card--callout',
+          start: 'top 95%',
+          once: true,
+        },
+        scale: 1,
+        y: 0,
+        opacity: 1,
+        duration: 1,
+        ease: 'power2.out',
+        // Safety fallback: force visible after 2s regardless of scroll
+        onStart: () => {
+          setTimeout(() => {
+            const el = document.querySelector('.flavor-card--callout') as HTMLElement
+            if (el && parseFloat(getComputedStyle(el).opacity) < 0.5) {
+              gsap.set(el, { opacity: 1, y: 0, scale: 1 })
+            }
+          }, 2000)
+        }
+      }
+    )
   }, sectionRef.value!)
 })
 
@@ -195,6 +211,9 @@ onUnmounted(() => {
   }
 
   &--callout {
+    @include respond-to('md') {
+      grid-column: span 2;
+    }
     @include respond-to('lg') {
       grid-column: span 4;
     }

@@ -1,0 +1,23 @@
+// Brand colors
+$color-primary: #FED47F;
+$color-secondary: #F3923E;
+$color-accent: #572612;
+
+$white: #ffffff;
+$black: #000000;
+$transparent: transparent;
+
+// Text colors
+$text-primary: $color-accent;
+$text-secondary: rgba($color-accent, 0.7);
+$text-light: $white;
+
+// Alert colors
+$alert-warning: #f59e0b;
+$alert-info: #3b82f6;
+$alert-success: #10b981;
+$alert-error: #ef4444;
+$alert-warning-bg: rgba($alert-warning, 0.1);
+$alert-info-bg: rgba($alert-info, 0.1);
+$alert-success-bg: rgba($alert-success, 0.1);
+$alert-error-bg: rgba($alert-error, 0.1);

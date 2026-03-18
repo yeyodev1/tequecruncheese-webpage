@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import gsap from 'gsap'
+import logoSmall from '@/assets/logos/logo-small.png'
 
 const props = defineProps({
   isOpen: {
@@ -19,7 +20,7 @@ const selectedImage = ref<string | null>(null)
 
 const shuffleImages = () => {
   const shuffled = [...allImages].sort(() => 0.5 - Math.random())
-  displayImages.value = shuffled.slice(0, 20) // Always show up to 20 dynamic images
+  displayImages.value = shuffled.slice(0, 15) // Limit to 15 for better performance
 }
 
 const openLightbox = (imgSrc: string) => {
@@ -48,8 +49,10 @@ watch(() => props.isOpen, async (newVal) => {
       { opacity: 1, backdropFilter: 'blur(15px)', duration: 0.6, ease: 'power2.out' }
     )
 
-    // Preload images
-    const loadPromises = displayImages.value.map(src => {
+    // Preload only the first 6 images (above-the-fold in the grid).
+    // The rest load lazily via loading="lazy" on the img tags — no network congestion.
+    const firstBatch = displayImages.value.slice(0, 6)
+    const loadPromises = firstBatch.map(src => {
       return new Promise((resolve) => {
         const img = new Image()
         img.src = src
@@ -103,11 +106,29 @@ const close = () => {
         <i class="fa-solid fa-xmark"></i>
       </button>
       
+      <!-- Branded loading overlay -->
+      <Transition name="gallery-loader-fade">
+        <div v-if="isLoading" class="gallery-loader">
+          <div class="gallery-loader__inner">
+            <div class="gallery-loader__logo-wrap">
+              <img :src="logoSmall" alt="TequeCruncheese" class="gallery-loader__logo" />
+              <div class="gallery-loader__ring"></div>
+              <div class="gallery-loader__ring gallery-loader__ring--2"></div>
+            </div>
+            <p class="gallery-loader__title">Nuestra Galería</p>
+            <p class="gallery-loader__sub">Cargando las mejores fotos para ti…</p>
+            <div class="gallery-loader__bar-wrap">
+              <div class="gallery-loader__bar"></div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
       <div class="gallery-modal__content">
         <h2 class="gallery-modal__title title-display text-accent">Nuestra Galería</h2>
         <p class="gallery-modal__subtitle">Cada bocado es una obra de arte. Explora el verdadero <em>Crunch</em>.</p>
-        
-        <!-- Skeleton Grid -->
+
+        <!-- Skeleton placeholder while loading (invisible, maintains layout) -->
         <div v-if="isLoading" class="gallery-modal__grid gallery-modal__grid--skeleton">
           <div v-for="n in 20" :key="'skel-' + n" :class="['gallery-modal__item', 'gallery-modal__skeleton', `gallery-modal__item--${n-1}`]"></div>
         </div>
@@ -120,7 +141,7 @@ const close = () => {
             :class="['gallery-modal__item', `gallery-modal__item--${index}`]"
             @click="openLightbox(img)"
           >
-            <img :src="img" alt="Gallery Tequecruncheese" loading="lazy" />
+            <img :src="img" alt="Gallery Tequecruncheese" loading="lazy" decoding="async" />
             <div class="gallery-modal__hover-overlay">
               <i class="fa-solid fa-expand"></i>
             </div>
@@ -168,10 +189,10 @@ const close = () => {
 
   &__close {
     position: fixed;
-    top: $spacing-md;
+    top: 24px;
     right: $spacing-md;
-    width: 60px;
-    height: 60px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background-color: $color-primary;
     color: $color-accent;
@@ -186,8 +207,10 @@ const close = () => {
     box-shadow: 0 10px 25px rgba($color-primary, 0.5);
 
     @include respond-to('md') {
-      top: $spacing-xl;
+      top: 32px;
       right: $spacing-xl;
+      width: 64px;
+      height: 64px;
     }
 
     &:hover {
@@ -324,7 +347,111 @@ const close = () => {
       transform: scale(1);
     }
   }
+
+  &__footer {
+    margin-top: $spacing-xl;
+  }
 }
+
+// ── Gallery branded loader ────────────────────────────────────────────────────
+.gallery-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: $color-accent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    animation: glFadeUp 0.5s ease both;
+  }
+
+  &__logo-wrap {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  &__logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    position: relative;
+    z-index: 2;
+    animation: glPulse 2s ease-in-out infinite;
+  }
+
+  &__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: $color-primary;
+    border-right-color: rgba($color-primary, 0.25);
+    animation: glSpin 1.2s linear infinite;
+
+    &--2 {
+      inset: 10px;
+      border-top-color: transparent;
+      border-bottom-color: rgba($color-primary, 0.45);
+      animation-duration: 1.9s;
+      animation-direction: reverse;
+    }
+  }
+
+  &__title {
+    font-family: $font-secondary;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: $color-primary;
+    letter-spacing: 0.04em;
+    margin: 0;
+  }
+
+  &__sub {
+    font-size: 0.82rem;
+    color: rgba($white, 0.45);
+    letter-spacing: 0.07em;
+    margin: 0 0 8px;
+    animation: glBlink 1.8s ease-in-out infinite;
+  }
+
+  &__bar-wrap {
+    width: 180px;
+    height: 3px;
+    background: rgba($white, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+
+  &__bar {
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, $color-primary, lighten($color-primary, 15%));
+    border-radius: 9999px;
+    animation: glBar 1.4s ease-in-out infinite;
+  }
+}
+
+.gallery-loader-fade-enter-active { transition: opacity 0.4s ease; }
+.gallery-loader-fade-leave-active  { transition: opacity 0.5s ease; }
+.gallery-loader-fade-enter-from,
+.gallery-loader-fade-leave-to      { opacity: 0; }
+
+@keyframes glSpin    { to { transform: rotate(360deg); } }
+@keyframes glPulse   { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+@keyframes glFadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes glBar     { 0% { transform: translateX(-150%); } 50% { transform: translateX(50%); width: 60%; } 100% { transform: translateX(300%); width: 40%; } }
+@keyframes glBlink   { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
 
 // Transitions
 .fade-enter-active,

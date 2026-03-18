@@ -62,6 +62,17 @@ const waLink = 'https://wa.me/593963237880'
         <a href="#" class="footer__legal-link">Términos</a>
       </div>
     </div>
+
+    <!-- Dev signature -->
+    <div class="footer__signature">
+      <div class="footer__signature-content">
+        <i class="fa-solid fa-heart"></i>
+        <span>Diseñado &amp; desarrollado en Ecuador 🇪🇨 por</span>
+        <a href="https://yeyo.dev" target="_blank" rel="noopener" class="footer__signature-link">
+          <i class="fa-solid fa-code"></i> yeyodev
+        </a>
+      </div>
+    </div>
   </footer>
 </template>
 
@@ -253,5 +264,58 @@ const waLink = 'https://wa.me/593963237880'
     color: rgba($white, 0.2);
     font-size: 0.8rem;
   }
+
+  &__signature {
+    padding: $spacing-md $spacing-md $spacing-xl;
+    display: flex;
+    justify-content: center;
+
+    &-content {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba($white, 0.04);
+      border: 1px solid rgba($white, 0.08);
+      border-radius: 9999px;
+      padding: 10px 24px;
+      font-size: 0.85rem;
+      color: rgba($white, 0.55);
+      font-weight: 400;
+      backdrop-filter: blur(8px);
+
+      i.fa-heart {
+        color: #e74c3c;
+        font-size: 0.8rem;
+        animation: heartbeat 1.4s ease-in-out infinite;
+      }
+    }
+  }
+
+  &__signature-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: $color-primary;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: all 0.25s ease;
+
+    i { font-size: 0.8rem; }
+
+    &:hover {
+      color: lighten($color-primary, 12%);
+      letter-spacing: 0.08em;
+    }
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  14%       { transform: scale(1.25); }
+  28%       { transform: scale(1); }
+  42%       { transform: scale(1.15); }
+  56%       { transform: scale(1); }
 }
 </style>

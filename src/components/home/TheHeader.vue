@@ -12,6 +12,26 @@ const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
+const scrollToSection = (event: Event, targetId: string) => {
+  event.preventDefault()
+  
+  // if not on home view, we might need a different handling, but for now we expect sections to exist
+  const element = document.getElementById(targetId)
+  if (element) {
+    const headerOffset = 80 // roughly header height
+    const elementPosition = element.getBoundingClientRect().top
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+    
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    })
+  }
+  
+  // Close mobile menu if open
+  isMobileMenuOpen.value = false
+}
+
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
 })
@@ -30,13 +50,15 @@ onUnmounted(() => {
 
       <!-- Desktop Nav -->
       <nav class="header__nav header__nav--desktop">
-        <a href="#about" class="header__link">Nuestra Historia</a>
-        <a href="#products" class="header__link">Los Tequeños</a>
-        <a href="#contact" class="header__link">Contacto</a>
+        <a href="#about" class="header__link" @click="scrollToSection($event, 'about')">Nuestra Historia</a>
+        <a href="#products" class="header__link" @click="scrollToSection($event, 'products')">Los Tequeños</a>
+        <a href="#contact" class="header__link" @click="scrollToSection($event, 'contact')">Contacto</a>
       </nav>
 
       <div class="header__actions header__actions--desktop">
-        <button class="btn btn--primary">Pide Ahora</button>
+        <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--primary">
+          <i class="fa-brands fa-whatsapp"></i> Pide Ahora
+        </a>
       </div>
 
       <!-- Mobile Hamburger -->
@@ -55,10 +77,12 @@ onUnmounted(() => {
     <!-- Mobile Nav -->
     <div :class="['header__mobile-menu', { 'header__mobile-menu--open': isMobileMenuOpen }]">
       <nav class="header__mobile-nav">
-        <a href="#about" class="header__link" @click="toggleMobileMenu">Nuestra Historia</a>
-        <a href="#products" class="header__link" @click="toggleMobileMenu">Los Tequeños</a>
-        <a href="#contact" class="header__link" @click="toggleMobileMenu">Contacto</a>
-        <button class="btn btn--primary header__mobile-btn">Pide Ahora</button>
+        <a href="#about" class="header__link" @click="scrollToSection($event, 'about')">Nuestra Historia</a>
+        <a href="#products" class="header__link" @click="scrollToSection($event, 'products')">Los Tequeños</a>
+        <a href="#contact" class="header__link" @click="scrollToSection($event, 'contact')">Contacto</a>
+        <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--primary header__mobile-btn">
+          <i class="fa-brands fa-whatsapp"></i> Pide Ahora
+        </a>
       </nav>
     </div>
   </header>
@@ -74,15 +98,15 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   padding: $spacing-md 0;
   background-color: #FAFAFA;
-  box-shadow: 0 2px 20px rgba($color-accent, 0.05);
+  box-shadow: none;
 
   @include respond-to('lg') {
     background-color: $color-primary;
   }
-  
+
   &--scrolled {
     padding: $spacing-sm 0;
-    box-shadow: 0 4px 30px rgba($color-accent, 0.1);
+    box-shadow: 0 4px 24px rgba($color-accent, 0.08);
   }
 
   &__container {
@@ -131,21 +155,18 @@ onUnmounted(() => {
     font-weight: 600;
     font-size: 1rem;
     color: $color-accent;
+    text-decoration: none;
     position: relative;
-
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -4px;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background-color: $color-secondary;
-      transition: width 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    
+    // Smooth translation instead of underline on hover
+    &:hover {
+      color: $color-secondary;
+      transform: translateY(-2px);
     }
-
-    &:hover::after {
-      width: 100%;
+    
+    &:active {
+      transform: translateY(0);
     }
   }
 

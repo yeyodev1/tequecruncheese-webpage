@@ -13,7 +13,7 @@ const col2 = [img5, img6, img7, img8]
 </script>
 
 <template>
-  <section class="hero">
+  <section id="about" class="hero">
     <!-- Visuals (Background on mobile, right side on desktop) -->
     <div class="hero__visuals-container">
       <div class="hero__visuals">
@@ -51,8 +51,21 @@ const col2 = [img5, img6, img7, img8]
           Tequeños artesanales hechos a mano. Perfectamente dorados, increíblemente quesudos, locamente adictivos. El alma de toda buena fiesta.
         </p>
         <div class="hero__actions">
-          <button class="hero__btn-primary">Prueba el Crunch</button>
-          <button class="hero__btn-outline">Ver Menú</button>
+          <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="hero__btn-primary">
+            <i class="fa-brands fa-whatsapp"></i> Prueba el Crunch
+          </a>
+          <a href="#menu" class="hero__btn-outline">Ver Menú</a>
+        </div>
+        <div class="hero__social">
+          <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="hero__social-icon" aria-label="WhatsApp">
+            <i class="fa-brands fa-whatsapp"></i>
+          </a>
+          <a href="https://www.instagram.com/tequecruncheese_gye/" target="_blank" rel="noopener" class="hero__social-icon" aria-label="Instagram">
+            <i class="fa-brands fa-instagram"></i>
+          </a>
+          <a href="https://www.facebook.com/Tequecruncheese" target="_blank" rel="noopener" class="hero__social-icon" aria-label="Facebook">
+            <i class="fa-brands fa-facebook-f"></i>
+          </a>
         </div>
       </div>
     </div>
@@ -227,10 +240,40 @@ const col2 = [img5, img6, img7, img8]
     @include respond-to('lg') { justify-content: flex-start; }
   }
 
+  &__social {
+    display: flex;
+    gap: $spacing-md;
+    margin-top: $spacing-lg;
+    justify-content: center;
+
+    @include respond-to('lg') { justify-content: flex-start; }
+  }
+
+  &__social-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1.5px solid rgba($color-accent, 0.3);
+    color: $color-accent;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: $color-accent;
+      color: $white;
+      border-color: $color-accent;
+      transform: translateY(-2px);
+    }
+  }
+
   &__btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     padding: $spacing-sm $spacing-xl;
     font-family: inherit;
     font-weight: 600;

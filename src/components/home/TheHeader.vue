@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
+const waPedido = 'https://wa.me/593963237880?text=' + encodeURIComponent(
+  'Hola TequeCruncheese! 👋 Quisiera hacer un pedido de tequeños.\n\n' +
+  '¿Me pueden informar sobre productos, sabores y precios disponibles?\n\n' +
+  '¡Gracias!'
+)
+
 const isScrolled = ref(false)
 const isMobileMenuOpen = ref(false)
 
@@ -56,7 +62,7 @@ onUnmounted(() => {
       </nav>
 
       <div class="header__actions header__actions--desktop">
-        <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--primary">
+        <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary" style="text-decoration:none;">
           <i class="fa-brands fa-whatsapp"></i> Pide Ahora
         </a>
       </div>
@@ -80,7 +86,7 @@ onUnmounted(() => {
         <a href="#about" class="header__link" @click="scrollToSection($event, 'about')">Nuestra Historia</a>
         <a href="#products" class="header__link" @click="scrollToSection($event, 'products')">Los Tequeños</a>
         <a href="#contact" class="header__link" @click="scrollToSection($event, 'contact')">Contacto</a>
-        <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--primary header__mobile-btn">
+        <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary header__mobile-btn" style="text-decoration:none;">
           <i class="fa-brands fa-whatsapp"></i> Pide Ahora
         </a>
       </nav>

@@ -6,6 +6,15 @@ import frozenImg from '@/assets/stock/DSC06027.jpg'
 
 gsap.registerPlugin(ScrollTrigger)
 
+const waBandeja = 'https://wa.me/593963237880?text=' + encodeURIComponent(
+  'Hola TequeCruncheese! 👋 Me gustaría reservar una bandeja de tequeños congelados.\n\n' +
+  '¿Me pueden informar sobre:\n' +
+  '• Sabores disponibles\n' +
+  '• Tamaños de bandejas y precios\n' +
+  '• Tiempo de entrega\n\n' +
+  '¡Gracias!'
+)
+
 const frozenBenefits = [
   'Listos para freír en la comodidad de tu hogar',
   'Frescura 100% garantizada y sellada al vacío',
@@ -140,7 +149,7 @@ onUnmounted(() => {
         </ul>
 
         <div class="take-home__action">
-          <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="btn btn--primary take-home__btn">
+          <a :href="waBandeja" target="_blank" rel="noopener" class="btn btn--primary take-home__btn" style="text-decoration:none;">
             <i class="fa-brands fa-whatsapp"></i> Reserva tu Bandeja
           </a>
         </div>

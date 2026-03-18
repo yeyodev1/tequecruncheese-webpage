@@ -1,4 +1,7 @@
 <script setup lang="ts">
+const waBase = 'https://wa.me/593963237880?text='
+const waPedido = waBase + encodeURIComponent('Hola TequeCruncheese! 👋 Me gustaría hacer un pedido de tequeños. ¿Cuáles son los productos y precios disponibles?')
+
 import img1 from '@/assets/stock/DSC05880.jpg'
 import img2 from '@/assets/stock/DSC06027.jpg'
 import img3 from '@/assets/stock/DSC06029.jpg'
@@ -51,13 +54,13 @@ const col2 = [img5, img6, img7, img8]
           Tequeños artesanales hechos a mano. Perfectamente dorados, increíblemente quesudos, locamente adictivos. El alma de toda buena fiesta.
         </p>
         <div class="hero__actions">
-          <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="hero__btn-primary">
+          <a :href="waPedido" target="_blank" rel="noopener" class="hero__btn-primary">
             <i class="fa-brands fa-whatsapp"></i> Prueba el Crunch
           </a>
           <a href="#menu" class="hero__btn-outline">Ver Menú</a>
         </div>
         <div class="hero__social">
-          <a href="https://wa.me/593963237880" target="_blank" rel="noopener" class="hero__social-icon" aria-label="WhatsApp">
+          <a :href="waPedido" target="_blank" rel="noopener" class="hero__social-icon" aria-label="WhatsApp">
             <i class="fa-brands fa-whatsapp"></i>
           </a>
           <a href="https://www.instagram.com/tequecruncheese_gye/" target="_blank" rel="noopener" class="hero__social-icon" aria-label="Instagram">
@@ -253,12 +256,13 @@ const col2 = [img5, img6, img7, img8]
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     border: 1.5px solid rgba($color-accent, 0.3);
     color: $color-accent;
-    font-size: 1rem;
+    font-size: 1.1rem;
+    text-decoration: none;
     transition: all 0.2s ease;
 
     &:hover {
@@ -280,6 +284,7 @@ const col2 = [img5, img6, img7, img8]
     font-size: 1rem;
     border-radius: 9999px;
     cursor: pointer;
+    text-decoration: none;
     transition: all 0.3s ease;
     background: $color-primary;
     color: $color-accent;
@@ -312,6 +317,7 @@ const col2 = [img5, img6, img7, img8]
     font-size: 1rem;
     border-radius: 9999px;
     cursor: pointer;
+    text-decoration: none;
     transition: all 0.3s ease;
     background: transparent;
     color: $color-accent;

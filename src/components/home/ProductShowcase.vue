@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import gsap from 'gsap'
+import ScrollTrigger from 'gsap/ScrollTrigger'
 
 import img1 from '@/assets/stock/DSC06085.jpg'
 import img2 from '@/assets/stock/DSC06166.jpg'
 import img3 from '@/assets/stock/DSC06180.jpg'
+
+gsap.registerPlugin(ScrollTrigger)
 
 const showcaseItems = ref([
   {
@@ -25,10 +29,59 @@ const showcaseItems = ref([
     description: 'Acompaña nuestras delicias crujientes con exquisitas salsas artesanales.',
   }
 ])
+
+const sectionRef = ref<HTMLElement | null>(null)
+let ctx: gsap.Context
+
+onMounted(() => {
+  ctx = gsap.context(() => {
+    // Reveal header
+    gsap.from('.showcase__header > *', {
+      scrollTrigger: {
+        trigger: '.showcase__header',
+        start: 'top 80%',
+      },
+      y: 40,
+      opacity: 0,
+      duration: 1,
+      stagger: 0.2,
+      ease: 'power3.out'
+    })
+
+    // Reveal Product Cards
+    gsap.from('.showcase__card', {
+      scrollTrigger: {
+        trigger: '.showcase__grid',
+        start: 'top 75%',
+      },
+      y: 60,
+      opacity: 0,
+      duration: 1.2,
+      stagger: 0.2,
+      ease: 'back.out(1.2)'
+    })
+
+    // Reveal CTA
+    gsap.from('.showcase__cta', {
+      scrollTrigger: {
+        trigger: '.showcase__grid',
+        start: 'bottom 85%',
+      },
+      scale: 0.95,
+      opacity: 0,
+      duration: 0.8,
+      ease: 'power2.out'
+    })
+  }, sectionRef.value!)
+})
+
+onUnmounted(() => {
+  if (ctx) ctx.revert()
+})
 </script>
 
 <template>
-  <section id="products" class="showcase">
+  <section id="products" class="showcase" ref="sectionRef">
     <div class="showcase__header">
       <h2 class="title-section text-accent">Experimenta El Crunch</h2>
       <p class="showcase__subtitle text-secondary">Una sinfonía de texturas y sabores en cada bocado.</p>

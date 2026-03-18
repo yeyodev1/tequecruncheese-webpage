@@ -1,6 +1,22 @@
 <script setup lang="ts">
 const currentYear = new Date().getFullYear()
 const waLink = 'https://wa.me/593963237880'
+
+const scrollToSection = (event: Event, targetId: string) => {
+  event.preventDefault()
+  
+  const element = document.getElementById(targetId)
+  if (element) {
+    const headerOffset = 80 // roughly header height
+    const elementPosition = element.getBoundingClientRect().top
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+    
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    })
+  }
+}
 </script>
 
 <template>
@@ -31,9 +47,9 @@ const waLink = 'https://wa.me/593963237880'
       <div class="footer__links">
         <div class="footer__col">
           <h4 class="footer__heading">Explora</h4>
-          <a href="#about" class="footer__link"><i class="fa-solid fa-chevron-right"></i> Nuestra Historia</a>
-          <a href="#menu" class="footer__link"><i class="fa-solid fa-chevron-right"></i> Menú</a>
-          <a href="#locations" class="footer__link"><i class="fa-solid fa-chevron-right"></i> Kioskos</a>
+          <a href="#sabores" class="footer__link" @click="scrollToSection($event, 'sabores')"><i class="fa-solid fa-chevron-right"></i> Sabores</a>
+          <a href="#combos" class="footer__link" @click="scrollToSection($event, 'combos')"><i class="fa-solid fa-chevron-right"></i> Eventos y Combos</a>
+          <a href="#congelados" class="footer__link" @click="scrollToSection($event, 'congelados')"><i class="fa-solid fa-chevron-right"></i> Congelados</a>
         </div>
         <div class="footer__col">
           <h4 class="footer__heading">Contacto</h4>

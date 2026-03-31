@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
 
 const waPedido = 'https://wa.me/593963237880?text=' + encodeURIComponent(
   'Hola TequeCruncheese! 👋 Quisiera hacer un pedido de tequeños.\n\n' +
@@ -59,6 +60,7 @@ onUnmounted(() => {
         <a href="#sabores" class="header__link" @click="scrollToSection($event, 'sabores')">Sabores</a>
         <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
         <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
+        <RouterLink to="/tienda" class="header__link">Tienda</RouterLink>
       </nav>
 
       <div class="header__actions header__actions--desktop">

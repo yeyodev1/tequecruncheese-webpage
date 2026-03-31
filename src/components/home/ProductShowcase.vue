@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 
@@ -105,7 +106,7 @@ onUnmounted(() => {
     </div>
 
     <div class="showcase__cta">
-      <button class="btn btn--primary">Ver Todos los Productos</button>
+      <RouterLink to="/tienda" class="btn btn--primary">Ver Todos los Productos</RouterLink>
     </div>
   </section>
 </template>

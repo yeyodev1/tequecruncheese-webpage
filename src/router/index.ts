@@ -7,6 +7,18 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/HomeView.vue'),
     meta: { title: 'Home' },
   },
+  {
+    path: '/tienda',
+    name: 'Tienda',
+    component: () => import('../views/TiendaView.vue'),
+    meta: { title: 'Tienda' },
+  },
+  {
+    path: '/pago/confirmado',
+    name: 'PagoConfirmado',
+    component: () => import('../views/PagoConfirmadoView.vue'),
+    meta: { title: 'Pago Confirmado' },
+  },
 ]
 
 const router = createRouter({

@@ -19,6 +19,13 @@ class PaymentService extends APIBase {
     return res.data
   }
 
+  async ordersByEmail(email: string): Promise<TrackOrderResponse[]> {
+    const res = await this.get<TrackOrderResponse[]>(
+      `orders/by-email?email=${encodeURIComponent(email)}`,
+    )
+    return res.data
+  }
+
   async trackOrder(token: string): Promise<TrackOrderResponse> {
     const res = await this.get<TrackOrderResponse>(`orders/track/${token}`)
     return res.data

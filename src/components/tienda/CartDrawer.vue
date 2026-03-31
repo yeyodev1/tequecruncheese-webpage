@@ -21,6 +21,26 @@ function onEmailBlur() {
   emailTouched.value = true
 }
 
+const WHATSAPP_NUMBER = '593963237880'
+
+function orderByWhatsApp() {
+  const lines = cart.items.map(
+    (item) => `• ${item.cantidad}x ${item.nombre} — $${(item.precio * item.cantidad).toFixed(2)}`,
+  )
+  const message = [
+    '¡Hola Tequecruncheese! 🧀 Quisiera hacer el siguiente pedido:',
+    '',
+    ...lines,
+    '',
+    `*Total: $${cart.totalPrice.toFixed(2)}*`,
+    '',
+    '¡Gracias! 😊',
+  ].join('\n')
+
+  const url = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`
+  window.open(url, '_blank', 'noopener')
+}
+
 function increment(slug: string) {
   const item = cart.items.find((i) => i.slug === slug)
   if (item) cart.updateQuantity(slug, item.cantidad + 1)
@@ -101,7 +121,16 @@ function decrement(slug: string) {
         @click="emit('checkout')"
       >
         <i class="fa-solid fa-lock"></i>
-        Pagar Ahora
+        Pagar con PayPhone
+      </button>
+
+      <div class="cart-drawer__divider">
+        <span>o</span>
+      </div>
+
+      <button class="cart-drawer__whatsapp-btn" @click="orderByWhatsApp">
+        <i class="fa-brands fa-whatsapp"></i>
+        Pedir por WhatsApp
       </button>
     </div>
   </aside>
@@ -328,6 +357,46 @@ function decrement(slug: string) {
     &:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+  }
+
+  &__divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #bbb;
+    font-size: 0.8rem;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e8e8e8;
+    }
+  }
+
+  &__whatsapp-btn {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid #25d366;
+    border-radius: 0.75rem;
+    background: #fff;
+    color: #128c3e;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: background 0.15s, color 0.15s;
+
+    i { font-size: 1.1rem; }
+
+    &:hover {
+      background: #25d366;
+      color: #fff;
     }
   }
 }

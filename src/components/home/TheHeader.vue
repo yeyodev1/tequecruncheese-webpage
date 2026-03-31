@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const waPedido = 'https://wa.me/593963237880?text=' + encodeURIComponent(
   'Hola TequeCruncheese! 👋 Quisiera hacer un pedido de tequeños.\n\n' +
@@ -12,7 +14,7 @@ const isScrolled = ref(false)
 const isMobileMenuOpen = ref(false)
 
 const handleScroll = () => {
-  isScrolled.value = window.scrollY > 50
+  isScrolled.value = window.scrollY > 60
 }
 
 const toggleMobileMenu = () => {
@@ -21,26 +23,30 @@ const toggleMobileMenu = () => {
 
 const scrollToSection = (event: Event, targetId: string) => {
   event.preventDefault()
-  
-  // if not on home view, we might need a different handling, but for now we expect sections to exist
+  isMobileMenuOpen.value = false
+
+  // If not on home, navigate there first then scroll
+  if (window.location.pathname !== '/') {
+    router.push('/').then(() => {
+      setTimeout(() => {
+        const el = document.getElementById(targetId)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 150)
+    })
+    return
+  }
+
   const element = document.getElementById(targetId)
   if (element) {
-    const headerOffset = 80 // roughly header height
-    const elementPosition = element.getBoundingClientRect().top
-    const offsetPosition = elementPosition + window.pageYOffset - headerOffset
-    
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth'
-    })
+    const headerOffset = 80
+    const offsetPosition = element.getBoundingClientRect().top + window.pageYOffset - headerOffset
+    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
   }
-  
-  // Close mobile menu if open
-  isMobileMenuOpen.value = false
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  handleScroll()
 })
 
 onUnmounted(() => {
@@ -51,9 +57,10 @@ onUnmounted(() => {
 <template>
   <header :class="['header', { 'header--scrolled': isScrolled }]">
     <div class="header__container">
-      <a href="#" class="header__logo">
+      <!-- Logo → home -->
+      <RouterLink to="/" class="header__logo">
         <img src="@/assets/logos/logo-small.png" alt="TequeCruncheese Logo" />
-      </a>
+      </RouterLink>
 
       <!-- Desktop Nav -->
       <nav class="header__nav header__nav--desktop">
@@ -61,20 +68,21 @@ onUnmounted(() => {
         <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
         <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
         <RouterLink to="/tienda" class="header__link">Tienda</RouterLink>
+        <a href="#mis-pedidos" class="header__link" @click="scrollToSection($event, 'mis-pedidos')">Mis pedidos</a>
       </nav>
 
       <div class="header__actions header__actions--desktop">
-        <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary" style="text-decoration:none;">
+        <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary header__wa-btn" style="text-decoration:none;">
           <i class="fa-brands fa-whatsapp"></i> Pide Ahora
         </a>
       </div>
 
       <!-- Mobile Hamburger -->
-      <button 
-        class="header__hamburger" 
-        @click="toggleMobileMenu" 
+      <button
+        class="header__hamburger"
         :aria-expanded="isMobileMenuOpen"
         aria-label="Alternar menú de navegación"
+        @click="toggleMobileMenu"
       >
         <span class="header__hamburger-line"></span>
         <span class="header__hamburger-line"></span>
@@ -88,6 +96,8 @@ onUnmounted(() => {
         <a href="#sabores" class="header__link" @click="scrollToSection($event, 'sabores')">Sabores</a>
         <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
         <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
+        <RouterLink to="/tienda" class="header__link" @click="isMobileMenuOpen = false">Tienda</RouterLink>
+        <a href="#mis-pedidos" class="header__link" @click="scrollToSection($event, 'mis-pedidos')">Mis pedidos</a>
         <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary header__mobile-btn" style="text-decoration:none;">
           <i class="fa-brands fa-whatsapp"></i> Pide Ahora
         </a>
@@ -103,18 +113,16 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   z-index: $z-index-nav;
-  transition: all 0.3s ease;
+  transition: background 0.35s ease, padding 0.35s ease, box-shadow 0.35s ease;
   padding: $spacing-md 0;
-  background-color: #FAFAFA;
-  box-shadow: none;
 
-  @include respond-to('lg') {
-    background-color: $color-primary;
-  }
+  // Default: transparent with dark links (visible on hero)
+  background: transparent;
 
   &--scrolled {
+    background: $color-accent;
     padding: $spacing-sm 0;
-    box-shadow: 0 4px 24px rgba($color-accent, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
   }
 
   &__container {
@@ -129,6 +137,8 @@ onUnmounted(() => {
   &__logo {
     display: flex;
     align-items: center;
+    text-decoration: none;
+
     img {
       height: 48px;
       width: auto;
@@ -137,7 +147,7 @@ onUnmounted(() => {
   }
 
   &--scrolled &__logo img {
-    height: 40px;
+    height: 38px;
   }
 
   &__nav {
@@ -158,24 +168,37 @@ onUnmounted(() => {
     }
   }
 
+  // Links: dark on transparent header, light on scrolled
   &__link {
     font-family: $font-secondary;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: $color-accent;
     text-decoration: none;
-    position: relative;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    
-    // Smooth translation instead of underline on hover
+    transition: color 0.25s ease, transform 0.2s ease;
+
     &:hover {
-      color: $color-secondary;
       transform: translateY(-2px);
+      color: $color-secondary;
     }
-    
-    &:active {
-      transform: translateY(0);
-    }
+
+    &:active { transform: translateY(0); }
+  }
+
+  &--scrolled &__link {
+    color: $color-primary;
+
+    &:hover { color: lighten(#fed47f, 25%); }
+  }
+
+  // WA button adapts on scroll
+  &__wa-btn {
+    transition: background 0.25s, color 0.25s, border-color 0.25s;
+  }
+
+  &--scrolled &__wa-btn {
+    background: $color-primary !important;
+    color: $color-accent !important;
   }
 
   &__hamburger {
@@ -184,7 +207,10 @@ onUnmounted(() => {
     justify-content: space-between;
     width: 24px;
     height: 18px;
-    z-index: $z-index-nav + 1; // Above mobile menu
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: $z-index-nav + 1;
 
     @include respond-to('md') {
       display: none;
@@ -199,13 +225,18 @@ onUnmounted(() => {
     }
   }
 
+  &--scrolled &__hamburger-line {
+    background-color: $color-primary;
+  }
+
   &__mobile-menu {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100vh;
-    @include glass($opacity: 0.95, $blur: 24px);
+    background: rgba($color-accent, 0.97);
+    backdrop-filter: blur(16px);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -214,8 +245,13 @@ onUnmounted(() => {
     transition: transform 0.4s cubic-bezier(0.77, 0, 0.175, 1);
     z-index: $z-index-nav - 1;
 
-    &--open {
-      transform: translateY(0);
+    &--open { transform: translateY(0); }
+
+    .header__link {
+      color: $color-primary;
+      font-size: 1.4rem;
+
+      &:hover { color: $white; }
     }
   }
 
@@ -224,16 +260,12 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     gap: $spacing-lg;
-
-    .header__link {
-      font-size: 1.5rem;
-    }
   }
 
   &__mobile-btn {
     margin-top: $spacing-md;
     width: 100%;
-    max-width: 200px;
+    max-width: 220px;
   }
 }
 

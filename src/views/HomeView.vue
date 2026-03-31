@@ -5,6 +5,7 @@ import ProductShowcase from '@/components/home/ProductShowcase.vue'
 import OurFlavors from '@/components/home/OurFlavors.vue'
 import PartyCombos from '@/components/home/PartyCombos.vue'
 import TakeHome from '@/components/home/TakeHome.vue'
+import OrderTrackerSection from '@/components/home/OrderTrackerSection.vue'
 import TheFooter from '@/components/home/TheFooter.vue'
 </script>
 
@@ -16,6 +17,7 @@ import TheFooter from '@/components/home/TheFooter.vue'
     <OurFlavors />
     <PartyCombos />
     <TakeHome />
+    <OrderTrackerSection />
     <TheFooter />
   </main>
 </template>

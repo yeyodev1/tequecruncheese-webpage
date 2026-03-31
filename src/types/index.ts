@@ -58,6 +58,7 @@ export interface TrackOrderResponse {
   items: CartItem[]
   total: number
   createdAt: string
+  trackingToken?: string
 }
 
 export type OrderStatus =

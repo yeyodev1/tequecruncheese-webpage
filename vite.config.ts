@@ -19,4 +19,9 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
+  server: {
+    allowedHosts: [
+      'testing-storybrand-frontend.bakano.ec',
+    ],
+  },
 })

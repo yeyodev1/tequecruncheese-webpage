@@ -1,11 +1,25 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
 
 const emit = defineEmits<{ checkout: [] }>()
 const cart = useCartStore()
 
 const formattedTotal = computed(() => `$${cart.totalPrice.toFixed(2)}`)
+const emailTouched = ref(false)
+
+const emailValid = computed(() => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return re.test(cart.customerEmail)
+})
+
+function onEmailInput(e: Event) {
+  cart.setEmail((e.target as HTMLInputElement).value)
+}
+
+function onEmailBlur() {
+  emailTouched.value = true
+}
 
 function increment(slug: string) {
   const item = cart.items.find((i) => i.slug === slug)
@@ -59,7 +73,33 @@ function decrement(slug: string) {
         <span>Total</span>
         <strong>{{ formattedTotal }}</strong>
       </div>
-      <button class="btn btn--primary cart-drawer__checkout-btn" @click="emit('checkout')">
+
+      <div class="cart-drawer__email-field">
+        <label class="cart-drawer__email-label" for="cart-email">
+          <i class="fa-solid fa-envelope"></i>
+          Correo para confirmación <span class="cart-drawer__required">*</span>
+        </label>
+        <input
+          id="cart-email"
+          type="email"
+          class="cart-drawer__email-input"
+          :class="{ 'cart-drawer__email-input--error': emailTouched && !emailValid }"
+          :value="cart.customerEmail"
+          placeholder="tu@correo.com"
+          autocomplete="email"
+          @input="onEmailInput"
+          @blur="onEmailBlur"
+        />
+        <span v-if="emailTouched && !emailValid" class="cart-drawer__email-error">
+          Ingresa un correo válido para recibir tu confirmación.
+        </span>
+      </div>
+
+      <button
+        class="btn btn--primary cart-drawer__checkout-btn"
+        :disabled="!emailValid"
+        @click="emit('checkout')"
+      >
         <i class="fa-solid fa-lock"></i>
         Pagar Ahora
       </button>
@@ -235,12 +275,60 @@ function decrement(slug: string) {
     }
   }
 
+  &__email-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  &__email-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  &__required {
+    color: #e53e3e;
+  }
+
+  &__email-input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+
+    &:focus {
+      border-color: $color-accent;
+    }
+
+    &--error {
+      border-color: #e53e3e;
+    }
+  }
+
+  &__email-error {
+    font-size: 0.75rem;
+    color: #e53e3e;
+  }
+
   &__checkout-btn {
     width: 100%;
     justify-content: center;
     gap: 0.5rem;
     font-size: 1rem;
     padding: 0.875rem;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 }
 </style>

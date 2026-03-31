@@ -10,30 +10,30 @@ const cart = useCartStore()
 
 const status = ref<'loading' | 'approved' | 'rejected' | 'error'>('loading')
 const orderTotal = ref<number | null>(null)
+const trackingToken = ref<string | null>(null)
 
 onMounted(async () => {
-  const { id, clientTransactionId, transactionStatus } = route.query as Record<string, string>
+  const { id, clientTransactionId } = route.query as Record<string, string>
 
   if (!id || !clientTransactionId) {
     status.value = 'error'
     return
   }
 
-  if (transactionStatus === 'Approved') {
-    try {
-      const result = await paymentService.confirmPayment({ id, clientTransactionId })
-      if (result.success) {
-        orderTotal.value = result.order.total
-        cart.clear()
-        status.value = 'approved'
-      } else {
-        status.value = 'rejected'
-      }
-    } catch {
-      status.value = 'error'
+  // PayPhone only sends id + clientTransactionId in the redirect URL.
+  // Always call confirm — the backend verifies the real status with PayPhone.
+  try {
+    const result = await paymentService.confirmPayment({ id, clientTransactionId })
+    if (result.success) {
+      orderTotal.value = result.order.total
+      trackingToken.value = result.order.trackingToken ?? null
+      cart.clear()
+      status.value = 'approved'
+    } else {
+      status.value = 'rejected'
     }
-  } else {
-    status.value = 'rejected'
+  } catch {
+    status.value = 'error'
   }
 })
 </script>
@@ -52,11 +52,19 @@ onMounted(async () => {
       <div v-else-if="status === 'approved'" class="pago-confirmado__state">
         <i class="fa-solid fa-circle-check pago-confirmado__icon pago-confirmado__icon--success"></i>
         <h2>¡Pago exitoso!</h2>
-        <p>Tu pedido ha sido confirmado. Pronto nos comunicaremos contigo.</p>
+        <p>Tu pedido ha sido confirmado. Revisa tu correo para el enlace de seguimiento.</p>
         <p v-if="orderTotal" class="pago-confirmado__total">
           Total pagado: <strong>${{ orderTotal.toFixed(2) }}</strong>
         </p>
-        <RouterLink to="/tienda" class="btn btn--primary pago-confirmado__btn">
+        <RouterLink
+          v-if="trackingToken"
+          :to="`/pedido/${trackingToken}`"
+          class="btn btn--primary pago-confirmado__btn"
+        >
+          <i class="fa-solid fa-magnifying-glass"></i>
+          Ver estado de mi pedido
+        </RouterLink>
+        <RouterLink v-else to="/tienda" class="btn btn--primary pago-confirmado__btn">
           Seguir comprando
         </RouterLink>
       </div>

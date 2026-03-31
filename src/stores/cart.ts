@@ -3,11 +3,13 @@ import type { CartItem } from '@/types'
 
 export interface CartState {
   items: CartItem[]
+  customerEmail: string
 }
 
 export const useCartStore = defineStore('cart', {
   state: (): CartState => ({
     items: [],
+    customerEmail: '',
   }),
 
   getters: {
@@ -42,8 +44,13 @@ export const useCartStore = defineStore('cart', {
       }
     },
 
+    setEmail(email: string) {
+      this.customerEmail = email
+    },
+
     clear() {
       this.items = []
+      this.customerEmail = ''
     },
   },
 })

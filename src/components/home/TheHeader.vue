@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useCartStore } from '@/stores/cart'
+import { useModalStore } from '@/stores/modal'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const modal = useModalStore()
 
 const waPedido = 'https://wa.me/593963237880?text=' + encodeURIComponent(
   'Hola TequeCruncheese! 👋 Quisiera hacer un pedido de tequeños.\n\n' +
@@ -17,8 +21,18 @@ const isMobileMenuOpen = ref(false)
 const isUserMenuOpen = ref(false)
 
 // ── Auth state ────────────────────────────────────────────────
+const cart = useCartStore()
+
 const isAdmin = computed(() => !!localStorage.getItem('admin_token'))
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+
+function handleCartClick() {
+  if (route.path !== '/tienda') {
+    router.push('/tienda')
+  } else {
+    cart.toggleCart()
+  }
+}
 
 const userInitials = computed(() => {
   const name = userStore.name || userStore.email || ''
@@ -79,7 +93,15 @@ const scrollToSection = (event: Event, targetId: string) => {
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
+  const confirmed = await modal.confirm({
+    title: '¿Cerrar sesión?',
+    message: 'Volverás a ser un visitante. Puedes volver a ingresar cuando quieras.',
+    confirmText: 'Cerrar sesión',
+    cancelText: 'Cancelar',
+    variant: 'danger',
+  })
+  if (!confirmed) return
   userStore.logout()
   closeUserMenu()
   closeMobileMenu()
@@ -139,7 +161,10 @@ onUnmounted(() => {
         <!-- LOGGED IN: user pill + dropdown -->
         <div v-else-if="isLoggedIn" class="header__user" @click.stop="toggleUserMenu">
           <div :class="['header__user-pill', { 'header__user-pill--open': isUserMenuOpen }]">
-            <span class="header__user-avatar">{{ userInitials || '👤' }}</span>
+            <span class="header__user-avatar">
+              <template v-if="userInitials">{{ userInitials }}</template>
+              <i v-else class="fa-solid fa-user"></i>
+            </span>
             <span class="header__user-name">{{ displayName }}</span>
             <i class="fa-solid fa-chevron-down header__user-chevron"></i>
           </div>
@@ -171,6 +196,14 @@ onUnmounted(() => {
           <i class="fa-regular fa-user"></i>
           <span>Iniciar sesión</span>
         </RouterLink>
+
+        <!-- Cart icon -->
+        <button class="header__cart-btn" @click="handleCartClick" aria-label="Ver carrito">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <Transition name="cart-badge">
+            <span v-if="cart.totalItems > 0" class="header__cart-badge">{{ cart.totalItems }}</span>
+          </Transition>
+        </button>
 
         <!-- WA CTA -->
         <a :href="waPedido" target="_blank" rel="noopener" class="header__wa-btn">
@@ -204,7 +237,10 @@ onUnmounted(() => {
             </span>
           </div>
           <div v-else-if="isLoggedIn" class="header__mobile-user-section">
-            <span class="header__mobile-avatar">{{ userInitials || '👤' }}</span>
+            <span class="header__mobile-avatar">
+              <template v-if="userInitials">{{ userInitials }}</template>
+              <i v-else class="fa-solid fa-user"></i>
+            </span>
             <span class="header__mobile-user-name">{{ displayName }}</span>
           </div>
 
@@ -233,6 +269,16 @@ onUnmounted(() => {
           <RouterLink v-else to="/login" class="header__mobile-login-btn" @click="closeMobileMenu">
             <i class="fa-regular fa-user"></i> Iniciar sesión
           </RouterLink>
+
+          <button
+            v-if="cart.totalItems > 0"
+            class="header__mobile-cart"
+            @click="() => { closeMobileMenu(); cart.openCart() }"
+          >
+            <i class="fa-solid fa-bag-shopping"></i>
+            Ver carrito
+            <span class="header__mobile-cart-badge">{{ cart.totalItems }}</span>
+          </button>
 
           <a :href="waPedido" target="_blank" rel="noopener" class="header__mobile-wa" @click="closeMobileMenu">
             <i class="fa-brands fa-whatsapp"></i> Pide ahora
@@ -411,6 +457,8 @@ onUnmounted(() => {
     font-weight: 800;
     font-family: $font-secondary;
     flex-shrink: 0;
+
+    i { font-size: 0.72rem; font-weight: 400; }
   }
 
   &--scrolled &__user-avatar {
@@ -538,6 +586,57 @@ onUnmounted(() => {
     }
   }
 
+  // ── Cart button ───────────────────────────────────────────
+  &__cart-btn {
+    position: relative;
+    background: rgba($color-accent, 0.08);
+    border: 1.5px solid rgba($color-accent, 0.15);
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: $color-accent;
+    font-size: 0.9rem;
+    transition: background 0.2s, border-color 0.2s;
+
+    &:hover {
+      background: rgba($color-accent, 0.15);
+      border-color: rgba($color-accent, 0.3);
+    }
+  }
+
+  &--scrolled &__cart-btn {
+    background: rgba($color-primary, 0.12);
+    border-color: rgba($color-primary, 0.2);
+    color: $color-primary;
+
+    &:hover {
+      background: rgba($color-primary, 0.22);
+      border-color: rgba($color-primary, 0.4);
+    }
+  }
+
+  &__cart-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: $color-primary;
+    color: $color-accent;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 900;
+    border: 2px solid $white;
+    pointer-events: none;
+  }
+
   // ── WA button ────────────────────────────────────────────────
   &__wa-btn {
     display: inline-flex;
@@ -643,6 +742,8 @@ onUnmounted(() => {
     font-size: 1.1rem;
     font-weight: 800;
     font-family: $font-secondary;
+
+    i { font-size: 1rem; font-weight: 400; }
   }
 
   &__mobile-user-name {
@@ -742,6 +843,36 @@ onUnmounted(() => {
     &:hover { opacity: 0.88; }
   }
 
+  &__mobile-cart {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: rgba($color-primary, 0.15);
+    color: $color-primary;
+    border: 1px solid rgba($color-primary, 0.25);
+    transition: background 0.15s;
+
+    &:hover { background: rgba($color-primary, 0.25); }
+  }
+
+  &__mobile-cart-badge {
+    background: $color-primary;
+    color: $color-accent;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 900;
+  }
+
   &__mobile-wa {
     display: inline-flex;
     align-items: center;
@@ -783,5 +914,15 @@ onUnmounted(() => {
 .mobile-menu-enter-from,
 .mobile-menu-leave-to {
   opacity: 0;
+}
+
+.cart-badge-enter-active,
+.cart-badge-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.cart-badge-enter-from,
+.cart-badge-leave-to {
+  opacity: 0;
+  transform: scale(0.4);
 }
 </style>

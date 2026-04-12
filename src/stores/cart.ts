@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
-import type { CartItem, CustomerInfo } from '@/types'
+import type { CartItem, CustomerInfo, FlavorSelection } from '@/types'
 
 export interface CartState {
   items: CartItem[]
   customerEmail: string
   customerInfo: CustomerInfo
+  isCartOpen: boolean
 }
 
 export const useCartStore = defineStore('cart', {
@@ -21,6 +22,7 @@ export const useCartStore = defineStore('cart', {
       referencia: '',
       mapsUrl: '',
     },
+    isCartOpen: false,
   }),
 
   getters: {
@@ -34,13 +36,23 @@ export const useCartStore = defineStore('cart', {
   },
 
   actions: {
-    addItem(product: Omit<CartItem, 'cantidad'>) {
-      const existing = this.items.find((i) => i.slug === product.slug)
-      if (existing) {
-        existing.cantidad++
+    addItem(
+      product: Omit<CartItem, 'cantidad'>,
+      flavorSelections?: FlavorSelection[],
+      openCart = true,
+    ) {
+      if (flavorSelections?.length) {
+        // Flavor box: replace existing entry (customer re-configured flavors)
+        const idx = this.items.findIndex((i) => i.slug === product.slug)
+        const item = { ...product, cantidad: 1, flavorSelections }
+        if (idx !== -1) this.items[idx] = item
+        else this.items.push(item)
       } else {
-        this.items.push({ ...product, cantidad: 1 })
+        const existing = this.items.find((i) => i.slug === product.slug)
+        if (existing) existing.cantidad++
+        else this.items.push({ ...product, cantidad: 1 })
       }
+      if (openCart) this.isCartOpen = true
     },
 
     removeItem(slug: string) {
@@ -63,6 +75,18 @@ export const useCartStore = defineStore('cart', {
       this.customerInfo = { ...this.customerInfo, ...info }
     },
 
+    openCart() {
+      this.isCartOpen = true
+    },
+
+    closeCart() {
+      this.isCartOpen = false
+    },
+
+    toggleCart() {
+      this.isCartOpen = !this.isCartOpen
+    },
+
     clear() {
       this.items = []
       this.customerEmail = ''
@@ -76,6 +100,7 @@ export const useCartStore = defineStore('cart', {
         referencia: '',
         mapsUrl: '',
       }
+      this.isCartOpen = false
     },
   },
 })

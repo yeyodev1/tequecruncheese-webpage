@@ -175,6 +175,31 @@ class APIBase {
       throw { status: 500, message: 'Unknown error' }
     }
   }
+
+  protected async delete_<T>(
+    endpoint: string,
+    data?: unknown,
+    headers?: Record<string, string>,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
+    const url = this.buildUrl(endpoint)
+    try {
+      return await this.axiosInstance.delete<T>(url, {
+        headers: headers || this.getHeaders(),
+        data,
+        ...config,
+      })
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+        throw {
+          status: error.response.status,
+          message: error.response.data?.message || error.message,
+          data: error.response.data,
+        }
+      }
+      throw { status: 500, message: 'Unknown error' }
+    }
+  }
 }
 
 export default APIBase

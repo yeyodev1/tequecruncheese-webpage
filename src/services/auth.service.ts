@@ -6,6 +6,7 @@ export interface LoginResponse {
     id: string
     name: string
     email: string
+    role: string
   }
 }
 
@@ -21,6 +22,8 @@ export interface UserProfile {
   email: string
 }
 
+export type OrderFilter = 'all' | 'pending' | 'active' | 'completed' | 'cancelled'
+
 export interface MyOrder {
   _id: string
   trackingToken: string
@@ -28,6 +31,7 @@ export interface MyOrder {
   items: { slug: string; nombre: string; precio: number; cantidad: number }[]
   total: number
   createdAt: string
+  payWithPayPhone?: string
 }
 
 class AuthService extends APIBase {
@@ -56,8 +60,9 @@ class AuthService extends APIBase {
     return res.data
   }
 
-  async myOrders(): Promise<MyOrder[]> {
-    const res = await this.get<MyOrder[]>('orders/my-orders')
+  async myOrders(filter?: string): Promise<MyOrder[]> {
+    const query = filter && filter !== 'all' ? `?filter=${filter}` : ''
+    const res = await this.get<MyOrder[]>(`orders/my-orders${query}`)
     return res.data
   }
 }

@@ -52,18 +52,40 @@ All project images are served from **Cloudinary** (cloud: `dvq6znk71`). **Never 
 - `/tienda` — TiendaView
 - `/pago/confirmado` and `/pay-response` — PagoConfirmadoView (Payphone callback)
 - `/pedido/:token` — TrackOrderView (public order tracking)
+- `/login` — LoginView (split-screen; admin users are redirected to `/admin/dashboard`)
+- `/recuperar-contrasena` — RecuperarContrasenaView
+- `/reset-password` — ResetPasswordView
+- `/mis-pedidos` — MisPedidosView (requiresAuth)
 - `/admin` — AdminLoginView
-- `/admin/dashboard` — AdminOrdenesView (requiresAdmin guard)
+- `/admin/dashboard` — AdminOrdenesView (requiresAdmin) — Kanban board
+- `/admin/productos` — AdminProductosView (requiresAdmin) — Products + Categories
 
 ## Backend (`tequecrunchesse-backapp`)
-Express 5 + TypeScript + Mongoose. Runs on port 8101. Routes:
-- `/api/admin/*` — Admin auth + order management (JWT guard)
+Express 5 + TypeScript + Mongoose. Runs on port 8101.
+
+Key routes:
+- `/api/admin/*` — Admin auth + orders + products + categories (JWT guard via `adminAuth` middleware)
+- `/api/auth/*` — Customer auth (login, register, me, forgot/reset-password)
 - `/api/payphone/*` — Payphone Button API (prepare + confirm)
-- `/api/orders/*` — Public order tracking
+- `/api/orders/*` — Public order tracking + customer `my-orders`
+- `/api/products` — Public product listing
+- `/api/categories` — Public category listing
+
+Models: `User` (role: customer|admin), `Order` (customerName, customerPhone, deliveryAddress, cedula, payWithPayPhone), `Product` (auto-slug from nombre, imagen{url,publicId}), `Category` (name unique)
 
 Payment gateway: **Payphone Button API** (`/button/Prepare` + `/button/Confirm`).
-Email notifications: **Resend** (order pending, payment approved, payment rejected).
+Email notifications: **Resend** — order pending, payment approved/rejected, status updates, custom admin→customer email, team alerts.
 Admin credentials: `admin@tequecruncheese.com` / `123456789`
+
+## Admin Panel
+- **Kanban board** (`/admin/dashboard`): 7 columns (one per OrderStatus). HTML5 native drag-and-drop. Right-side drawer with full customer info, backward stage changes, internal notes, email sending.
+- **Products** (`/admin/productos`): Two tabs — "Productos" (CRUD table, image auto-uploads to Cloudinary on file select) and "Categorías" (create/delete with bulk reassign warning).
+- Slug is **auto-generated** from `nombre` by the mongoose pre-save hook — never send a manual slug.
+- Category field in product form is a `<select>` from `/api/admin/categories`.
+
+## HTTP Layer — `httpBase.ts`
+`APIBase` class. Methods: `get`, `post`, `put`, `patch`, `delete_` (delete with body uses axios `{ data }` config).
+401 responses emit `auth:token-expired` DOM event. Timeout: 15s.
 
 ## Key Conventions
 - This is a **dual-project setup**: this repo is the **frontend**; the backend lives separately at the same directory level. Always use subagents for research tasks to keep context clean.

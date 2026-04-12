@@ -1,586 +1,648 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import type { FlavorSelection } from '@/types'
 
-const emit = defineEmits<{ checkout: [] }>()
 const cart = useCartStore()
+const router = useRouter()
 
-const formattedTotal = computed(() => `$${cart.totalPrice.toFixed(2)}`)
+// ── Body scroll lock ──────────────────────────────────────
+watch(
+  () => cart.isCartOpen,
+  (open) => { document.body.style.overflow = open ? 'hidden' : '' },
+)
 
-// ── Touched state ─────────────────────────────────────────
-const touched = ref({
-  nombre: false,
-  cedula: false,
-  email: false,
-  telefono: false,
-  calle: false,
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') cart.closeCart()
+}
+onMounted(() => document.addEventListener('keydown', onKeyDown))
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeyDown)
+  document.body.style.overflow = ''
 })
 
-function markTouched(field: keyof typeof touched.value) {
-  touched.value[field] = true
-}
-
-// ── Cedula validation (Ecuador algorithm) ─────────────────
-function validarCedula(cedula: string): boolean {
-  if (!/^\d{10}$/.test(cedula)) return false
-  const provincia = parseInt(cedula.slice(0, 2))
-  if (provincia < 1 || provincia > 24) return false
-  const digits = cedula.split('').map(Number)
-  const verifier = digits[9]
-  const sum = digits.slice(0, 9).reduce((acc, d, i) => {
-    let v = i % 2 === 0 ? d * 2 : d
-    if (v > 9) v -= 9
-    return acc + v
-  }, 0)
-  const mod = sum % 10
-  return mod === 0 ? verifier === 0 : verifier === 10 - mod
-}
-
-// ── Field validators ──────────────────────────────────────
-const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cart.customerInfo.email))
-const nombreValid = computed(() => cart.customerInfo.nombre.trim().length >= 3)
-const cedulaValid = computed(() => validarCedula(cart.customerInfo.cedula))
-const telefonoValid = computed(() =>
-  /^(09|02)\d{8}$/.test(cart.customerInfo.telefono),
-)
-const calleValid = computed(() => cart.customerInfo.calle.trim().length >= 5)
-
-const formValid = computed(
-  () =>
-    emailValid.value &&
-    nombreValid.value &&
-    cedulaValid.value &&
-    telefonoValid.value &&
-    calleValid.value,
-)
-
-// ── Input handlers ────────────────────────────────────────
-function onFieldInput(field: keyof typeof cart.customerInfo, value: string) {
-  cart.setCustomerInfo({ [field]: value })
-  // keep backward compat with customerEmail in store
-  if (field === 'email') cart.setEmail(value)
-}
-
 // ── Cart controls ─────────────────────────────────────────
-const WHATSAPP_NUMBER = '593963237880'
-
-function orderByWhatsApp() {
-  const lines = cart.items.map(
-    (item) => `• ${item.cantidad}x ${item.nombre} — $${(item.precio * item.cantidad).toFixed(2)}`,
-  )
-  const message = [
-    '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
-    '',
-    ...lines,
-    '',
-    `*Total: $${cart.totalPrice.toFixed(2)}*`,
-    '',
-    '¡Gracias!',
-  ].join('\n')
-
-  const url = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`
-  window.open(url, '_blank', 'noopener')
-}
-
 function increment(slug: string) {
   const item = cart.items.find((i) => i.slug === slug)
   if (item) cart.updateQuantity(slug, item.cantidad + 1)
 }
-
 function decrement(slug: string) {
   const item = cart.items.find((i) => i.slug === slug)
   if (item) cart.updateQuantity(slug, item.cantidad - 1)
 }
+
+// ── Flavor summary ────────────────────────────────────────
+function flavorSummary(sel: FlavorSelection[]): string {
+  return sel.map(s => `${s.cantidad}× ${s.nombre}`).join(', ')
+}
+
+// ── Go to checkout ────────────────────────────────────────
+function goToCheckout() {
+  cart.closeCart()
+  router.push('/checkout')
+}
 </script>
 
 <template>
-  <aside class="cart-drawer">
-    <div class="cart-drawer__header">
-      <h2 class="cart-drawer__title">
-        <i class="fa-solid fa-cart-shopping"></i>
-        Tu Pedido
-        <span v-if="cart.totalItems > 0" class="cart-drawer__badge">{{ cart.totalItems }}</span>
-      </h2>
-    </div>
+  <Teleport to="body">
+    <!-- Backdrop -->
+    <Transition name="cart-backdrop">
+      <div
+        v-if="cart.isCartOpen"
+        class="cart-backdrop"
+        aria-hidden="true"
+        @click="cart.closeCart"
+      ></div>
+    </Transition>
 
-    <div v-if="cart.isEmpty" class="cart-drawer__empty">
-      <i class="fa-solid fa-bag-shopping"></i>
-      <p>Tu carrito está vacío.<br />¡Agrega tus favoritos!</p>
-    </div>
-
-    <ul v-else class="cart-drawer__list">
-      <li v-for="item in cart.items" :key="item.slug" class="cart-drawer__item">
-        <div class="cart-drawer__item-info">
-          <span class="cart-drawer__item-name">{{ item.nombre }}</span>
-          <span class="cart-drawer__item-price">${{ (item.precio * item.cantidad).toFixed(2) }}</span>
-        </div>
-        <div class="cart-drawer__item-controls">
-          <button class="cart-drawer__qty-btn" @click="decrement(item.slug)">
-            <i class="fa-solid fa-minus"></i>
-          </button>
-          <span class="cart-drawer__qty">{{ item.cantidad }}</span>
-          <button class="cart-drawer__qty-btn" @click="increment(item.slug)">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-          <button class="cart-drawer__remove-btn" @click="cart.removeItem(item.slug)">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </li>
-    </ul>
-
-    <div v-if="!cart.isEmpty" class="cart-drawer__footer">
-      <div class="cart-drawer__total">
-        <span>Total</span>
-        <strong>{{ formattedTotal }}</strong>
-      </div>
-
-      <!-- Customer form -->
-      <div class="cart-drawer__form">
-        <p class="cart-drawer__form-title">
-          <i class="fa-solid fa-user"></i> Datos de entrega
-        </p>
-
-        <!-- Nombre -->
-        <div class="cart-drawer__field">
-          <label for="cart-nombre">
-            Nombre completo <span class="cart-drawer__required">*</span>
-          </label>
-          <input
-            id="cart-nombre"
-            type="text"
-            :value="cart.customerInfo.nombre"
-            :class="{ 'cart-drawer__input--error': touched.nombre && !nombreValid }"
-            placeholder="Juan Pérez"
-            autocomplete="name"
-            @input="onFieldInput('nombre', ($event.target as HTMLInputElement).value)"
-            @blur="markTouched('nombre')"
-          />
-          <span v-if="touched.nombre && !nombreValid" class="cart-drawer__field-error">
-            Ingresa tu nombre completo.
-          </span>
-        </div>
-
-        <!-- Cédula -->
-        <div class="cart-drawer__field">
-          <label for="cart-cedula">
-            Cédula <span class="cart-drawer__required">*</span>
-          </label>
-          <input
-            id="cart-cedula"
-            type="text"
-            :value="cart.customerInfo.cedula"
-            :class="{ 'cart-drawer__input--error': touched.cedula && !cedulaValid }"
-            placeholder="0912345678"
-            maxlength="10"
-            @input="onFieldInput('cedula', ($event.target as HTMLInputElement).value)"
-            @blur="markTouched('cedula')"
-          />
-          <span v-if="touched.cedula && !cedulaValid" class="cart-drawer__field-error">
-            Cédula ecuatoriana inválida.
-          </span>
-        </div>
-
-        <!-- Email -->
-        <div class="cart-drawer__field">
-          <label for="cart-email">
-            Correo electrónico <span class="cart-drawer__required">*</span>
-          </label>
-          <input
-            id="cart-email"
-            type="email"
-            :value="cart.customerInfo.email"
-            :class="{ 'cart-drawer__input--error': touched.email && !emailValid }"
-            placeholder="tu@correo.com"
-            autocomplete="email"
-            @input="onFieldInput('email', ($event.target as HTMLInputElement).value)"
-            @blur="markTouched('email')"
-          />
-          <span v-if="touched.email && !emailValid" class="cart-drawer__field-error">
-            Ingresa un correo válido.
-          </span>
-        </div>
-
-        <!-- Teléfono -->
-        <div class="cart-drawer__field">
-          <label for="cart-telefono">
-            Teléfono <span class="cart-drawer__required">*</span>
-          </label>
-          <input
-            id="cart-telefono"
-            type="tel"
-            :value="cart.customerInfo.telefono"
-            :class="{ 'cart-drawer__input--error': touched.telefono && !telefonoValid }"
-            placeholder="0991234567"
-            maxlength="10"
-            autocomplete="tel"
-            @input="onFieldInput('telefono', ($event.target as HTMLInputElement).value)"
-            @blur="markTouched('telefono')"
-          />
-          <span v-if="touched.telefono && !telefonoValid" class="cart-drawer__field-error">
-            Número ecuatoriano inválido (09... o 02...).
-          </span>
-        </div>
-
-        <!-- Calle / Dirección -->
-        <div class="cart-drawer__field">
-          <label for="cart-calle">
-            Dirección <span class="cart-drawer__required">*</span>
-          </label>
-          <input
-            id="cart-calle"
-            type="text"
-            :value="cart.customerInfo.calle"
-            :class="{ 'cart-drawer__input--error': touched.calle && !calleValid }"
-            placeholder="Av. 9 de Octubre y García Moreno"
-            @input="onFieldInput('calle', ($event.target as HTMLInputElement).value)"
-            @blur="markTouched('calle')"
-          />
-          <span v-if="touched.calle && !calleValid" class="cart-drawer__field-error">
-            Ingresa tu dirección.
-          </span>
-        </div>
-
-        <!-- Barrio -->
-        <div class="cart-drawer__field">
-          <label for="cart-barrio">Barrio / Sector</label>
-          <input
-            id="cart-barrio"
-            type="text"
-            :value="cart.customerInfo.barrio"
-            placeholder="Urdesa Central"
-            @input="onFieldInput('barrio', ($event.target as HTMLInputElement).value)"
-          />
-        </div>
-
-        <!-- Referencia -->
-        <div class="cart-drawer__field">
-          <label for="cart-referencia">Referencia</label>
-          <input
-            id="cart-referencia"
-            type="text"
-            :value="cart.customerInfo.referencia"
-            placeholder="Frente al parque"
-            @input="onFieldInput('referencia', ($event.target as HTMLInputElement).value)"
-          />
-        </div>
-
-        <!-- Google Maps URL -->
-        <div class="cart-drawer__field">
-          <label for="cart-maps">Link de Google Maps</label>
-          <input
-            id="cart-maps"
-            type="url"
-            :value="cart.customerInfo.mapsUrl"
-            placeholder="Pega aquí tu link de Google Maps"
-            @input="onFieldInput('mapsUrl', ($event.target as HTMLInputElement).value)"
-          />
-        </div>
-      </div>
-
-      <button
-        class="btn btn--primary cart-drawer__checkout-btn"
-        :disabled="!formValid"
-        @click="emit('checkout')"
+    <!-- Drawer panel -->
+    <Transition name="cart-panel">
+      <div
+        v-if="cart.isCartOpen"
+        class="cart-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Tu pedido"
       >
-        <i class="fa-solid fa-lock"></i>
-        Pagar con PayPhone
-      </button>
+        <!-- ── Head ────────────────────────────────────── -->
+        <div class="cart-panel__head">
+          <div class="cart-panel__head-left">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <h2 class="cart-panel__title">Tu Pedido</h2>
+            <Transition name="badge">
+              <span v-if="cart.totalItems > 0" class="cart-panel__count">
+                {{ cart.totalItems }}
+              </span>
+            </Transition>
+          </div>
+          <button class="cart-panel__close" aria-label="Cerrar" @click="cart.closeCart">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
 
-      <div class="cart-drawer__divider">
-        <span>o</span>
+        <!-- ── Empty ──────────────────────────────────── -->
+        <div v-if="cart.isEmpty" class="cart-panel__empty">
+          <div class="cart-panel__empty-icon">
+            <i class="fa-solid fa-bag-shopping"></i>
+          </div>
+          <p class="cart-panel__empty-title">Tu carrito está vacío</p>
+          <p class="cart-panel__empty-hint">
+            Agrega nuestros tequeños desde el catálogo
+          </p>
+          <button class="cart-panel__empty-cta" @click="cart.closeCart">
+            <i class="fa-solid fa-arrow-left"></i>
+            Ver catálogo
+          </button>
+        </div>
+
+        <!-- ── Body: items ────────────────────────────── -->
+        <div v-else class="cart-panel__body">
+
+          <div class="cart-panel__items-header">
+            <span>{{ cart.totalItems }} {{ cart.totalItems === 1 ? 'producto' : 'productos' }}</span>
+            <button class="cart-panel__clear" @click="cart.clear">
+              <i class="fa-solid fa-trash-can"></i>
+              Vaciar
+            </button>
+          </div>
+
+          <ul class="cart-panel__list">
+            <li
+              v-for="item in cart.items"
+              :key="item.slug"
+              class="cart-panel__item"
+              :class="{ 'cart-panel__item--flavored': item.flavorSelections?.length }"
+            >
+              <!-- Item icon -->
+              <div class="cart-panel__item-icon">
+                <i :class="item.flavorSelections?.length ? 'fa-solid fa-cubes-stacked' : 'fa-solid fa-bread-slice'"></i>
+              </div>
+
+              <!-- Name + flavors + unit price -->
+              <div class="cart-panel__item-info">
+                <span class="cart-panel__item-name">{{ item.nombre }}</span>
+                <span v-if="item.flavorSelections?.length" class="cart-panel__item-flavors">
+                  <i class="fa-solid fa-sliders"></i>
+                  {{ flavorSummary(item.flavorSelections) }}
+                </span>
+                <span class="cart-panel__item-unit">
+                  ${{ item.precio.toFixed(2) }} c/u
+                </span>
+              </div>
+
+              <!-- Qty + price -->
+              <div class="cart-panel__item-right">
+                <div class="cart-panel__qty">
+                  <button class="cart-panel__qty-btn" @click="decrement(item.slug)">
+                    <i class="fa-solid fa-minus"></i>
+                  </button>
+                  <span class="cart-panel__qty-num">{{ item.cantidad }}</span>
+                  <button class="cart-panel__qty-btn" @click="increment(item.slug)">
+                    <i class="fa-solid fa-plus"></i>
+                  </button>
+                </div>
+                <div class="cart-panel__item-price-block">
+                  <span class="cart-panel__item-price">
+                    ${{ (item.precio * item.cantidad).toFixed(2) }}
+                  </span>
+                  <button
+                    class="cart-panel__item-remove"
+                    aria-label="Eliminar"
+                    @click="cart.removeItem(item.slug)"
+                  >
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- ── Sticky footer ───────────────────────────── -->
+        <div v-if="!cart.isEmpty" class="cart-panel__foot">
+          <div class="cart-panel__foot-total">
+            <span>Total</span>
+            <strong>${{ cart.totalPrice.toFixed(2) }}</strong>
+          </div>
+
+          <button class="cart-panel__checkout" @click="goToCheckout">
+            <i class="fa-solid fa-arrow-right"></i>
+            Proceder al pago
+          </button>
+
+          <p class="cart-panel__foot-hint">
+            <i class="fa-solid fa-shield-halved"></i>
+            Pago seguro · Completa tus datos en el siguiente paso
+          </p>
+        </div>
       </div>
-
-      <button class="cart-drawer__whatsapp-btn" @click="orderByWhatsApp">
-        <i class="fa-brands fa-whatsapp"></i>
-        Pedir por WhatsApp
-      </button>
-    </div>
-  </aside>
+    </Transition>
+  </Teleport>
 </template>
 
 <style lang="scss" scoped>
-.cart-drawer {
+// ── Backdrop ───────────────────────────────────────────────────
+.cart-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+// ── Drawer panel ───────────────────────────────────────────────
+.cart-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 901;
+  width: 100%;
+  max-width: 460px;
   background: $white;
-  border-radius: 1.25rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  position: sticky;
-  top: 100px;
-  max-height: calc(100vh - 120px);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
 
-  &__header {
-    padding: 1.25rem 1.5rem;
+  // ── Head ────────────────────────────────────────────────────
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.375rem 1.5rem;
     background: $color-accent;
-    color: $white;
+    flex-shrink: 0;
+  }
+
+  &__head-left {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+
+    i {
+      font-size: 1rem;
+      color: rgba($white, 0.65);
+    }
   }
 
   &__title {
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: $white;
     margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    letter-spacing: -0.01em;
   }
 
-  &__badge {
+  &__count {
     background: $color-primary;
     color: $color-accent;
-    border-radius: 50%;
-    width: 1.5rem;
+    border-radius: 999px;
+    min-width: 1.5rem;
     height: 1.5rem;
+    padding: 0 0.35rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 800;
-    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 900;
   }
 
+  &__close {
+    background: rgba($white, 0.1);
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: rgba($white, 0.8);
+    font-size: 0.85rem;
+    transition: background 0.15s;
+
+    &:hover {
+      background: rgba($white, 0.2);
+      color: $white;
+    }
+  }
+
+  // ── Empty ────────────────────────────────────────────────────
   &__empty {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    padding: 2rem;
-    color: #aaa;
+    gap: 0.625rem;
+    padding: 3rem 2rem;
     text-align: center;
+  }
+
+  &__empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #f5f4f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
 
     i {
-      font-size: 3rem;
-      color: lighten($color-accent, 40%);
-    }
-
-    p {
-      margin: 0;
-      font-size: 0.9rem;
-      line-height: 1.5;
+      font-size: 1.6rem;
+      color: #ccc;
     }
   }
 
+  &__empty-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #444;
+    margin: 0;
+  }
+
+  &__empty-hint {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  &__empty-cta {
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: $color-accent;
+    color: $color-primary;
+    border: none;
+    border-radius: 0.625rem;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:hover { opacity: 0.85; }
+  }
+
+  // ── Scrollable body ──────────────────────────────────────────
+  &__body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #e0e0e0 transparent;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 4px; }
+  }
+
+  // ── Items header ─────────────────────────────────────────────
+  &__items-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.5rem 0.375rem;
+
+    span {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #bbb;
+    }
+  }
+
+  &__clear {
+    background: none;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #ccc;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.375rem;
+    transition: color 0.12s, background 0.12s;
+
+    i { font-size: 0.62rem; }
+    &:hover { color: #e53e3e; background: #fff0f0; }
+  }
+
+  // ── Items list ───────────────────────────────────────────────
   &__list {
     list-style: none;
     margin: 0;
-    padding: 0;
-    overflow-y: auto;
-    flex: 1;
+    padding: 0.5rem 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
   }
 
   &__item {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #f0f0f0;
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: #fdfaf6;
+    border: 1.5px solid #f0ebe2;
+    border-radius: 1rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
 
-    &:last-child {
-      border-bottom: none;
+    &:hover { border-color: rgba($color-accent, 0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+    &--flavored {
+      background: #f9f5ff;
+      border-color: rgba(#7c3aed, 0.12);
+
+      &:hover { border-color: rgba(#7c3aed, 0.25); }
     }
   }
 
-  &__item-info {
+  // ── Item icon ────────────────────────────────────────────────
+  &__item-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 0.625rem;
+    background: rgba($color-accent, 0.08);
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    i { font-size: 0.875rem; color: $color-accent; }
+
+    .cart-panel__item--flavored & {
+      background: rgba(#7c3aed, 0.08);
+      i { color: #7c3aed; }
+    }
+  }
+
+  // ── Item info ────────────────────────────────────────────────
+  &__item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
   }
 
   &__item-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.875rem;
+    font-weight: 700;
     color: $color-accent;
-    flex: 1;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__item-flavors {
+    font-size: 0.7rem;
+    color: #9f7aea;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    i { font-size: 0.6rem; flex-shrink: 0; }
+  }
+
+  &__item-unit {
+    font-size: 0.7rem;
+    color: #bbb;
+    font-weight: 500;
+  }
+
+  // ── Item right: qty + price ───────────────────────────────────
+  &__item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  // ── Qty pill ─────────────────────────────────────────────────
+  &__qty {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    border: 1.5px solid #e8e2d8;
+    border-radius: 999px;
+    padding: 0.1rem;
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  &__qty-btn {
+    background: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.5rem;
+    color: $color-accent;
+    transition: background 0.12s;
+
+    &:hover { background: rgba($color-accent, 0.1); }
+  }
+
+  &__qty-num {
+    font-size: 0.82rem;
+    font-weight: 900;
+    color: $color-accent;
+    min-width: 1.1rem;
+    text-align: center;
+  }
+
+  &__item-price-block {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
   }
 
   &__item-price {
     font-size: 0.9rem;
-    font-weight: 700;
+    font-weight: 900;
     color: $color-accent;
     white-space: nowrap;
+    letter-spacing: -0.02em;
   }
 
-  &__item-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  &__qty-btn,
-  &__remove-btn {
+  &__item-remove {
     background: none;
-    border: 1px solid #e0e0e0;
+    border: none;
+    width: 22px;
+    height: 22px;
     border-radius: 0.375rem;
-    width: 1.75rem;
-    height: 1.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 0.7rem;
-    transition: background 0.15s, border-color 0.15s;
+    font-size: 0.65rem;
+    color: #ddd;
+    transition: color 0.15s, background 0.15s;
 
     &:hover {
-      background: #f5f5f5;
-      border-color: $color-accent;
+      color: #e53e3e;
+      background: #fff0f0;
     }
   }
 
-  &__remove-btn {
-    color: #e53e3e;
-    margin-left: auto;
-
-    &:hover {
-      background: #fff5f5;
-      border-color: #e53e3e;
-    }
-  }
-
-  &__qty {
-    font-weight: 700;
-    font-size: 0.9rem;
-    min-width: 1.5rem;
-    text-align: center;
-  }
-
-  &__footer {
-    padding: 1.25rem 1.5rem;
-    border-top: 2px solid #f0f0f0;
+  // ── Sticky footer ────────────────────────────────────────────
+  &__foot {
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 2px solid #f0ede8;
+    background: $white;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    overflow-y: auto;
+    gap: 0.75rem;
+    flex-shrink: 0;
   }
 
-  &__total {
+  &__foot-total {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    font-size: 1rem;
+    justify-content: space-between;
+    padding: 0.25rem 0 0.375rem;
+
+    span {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
 
     strong {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
+      font-weight: 900;
       color: $color-accent;
+      letter-spacing: -0.03em;
+      font-family: $font-secondary;
     }
   }
 
-  // ── Form ─────────────────────────────────────────────────
-  &__form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    border: 1px solid #f0f0f0;
-    border-radius: 0.75rem;
-    padding: 1rem;
-    background: #fafafa;
-  }
-
-  &__form-title {
-    margin: 0 0 0.25rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: $color-accent;
+  &__checkout {
+    width: 100%;
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-  }
-
-  &__field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-
-    label {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #555;
-    }
-
-    input {
-      width: 100%;
-      padding: 0.55rem 0.75rem;
-      border: 1.5px solid #e0e0e0;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.15s;
-      box-sizing: border-box;
-      background: $white;
-
-      &:focus {
-        border-color: $color-accent;
-      }
-    }
-  }
-
-  &__input--error {
-    border-color: #e53e3e !important;
-  }
-
-  &__field-error {
-    font-size: 0.72rem;
-    color: #e53e3e;
-  }
-
-  &__required {
-    color: #e53e3e;
-  }
-
-  &__checkout-btn {
-    width: 100%;
     justify-content: center;
     gap: 0.5rem;
-    font-size: 1rem;
-    padding: 0.875rem;
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  &__divider {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: #bbb;
-    font-size: 0.8rem;
-
-    &::before,
-    &::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #e8e8e8;
-    }
-  }
-
-  &__whatsapp-btn {
-    width: 100%;
-    padding: 0.8rem;
-    border: 2px solid #25d366;
-    border-radius: 0.75rem;
-    background: #fff;
-    color: #128c3e;
-    font-size: 0.95rem;
-    font-weight: 700;
+    padding: 0.95rem 1.5rem;
+    background: $color-accent;
+    color: $color-primary;
+    border: none;
+    border-radius: 0.875rem;
+    font-size: 0.975rem;
+    font-weight: 800;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: background 0.15s, color 0.15s;
+    transition: opacity 0.15s, transform 0.15s;
+    letter-spacing: 0.01em;
 
-    i { font-size: 1.1rem; }
+    i { font-size: 0.85rem; }
 
     &:hover {
-      background: #25d366;
-      color: #fff;
+      opacity: 0.88;
+      transform: translateY(-1px);
     }
   }
+
+  &__foot-hint {
+    text-align: center;
+    font-size: 0.74rem;
+    color: #bbb;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+
+    i { color: #38a169; font-size: 0.72rem; }
+  }
+}
+
+// ── Transitions ────────────────────────────────────────────────
+.cart-backdrop-enter-active,
+.cart-backdrop-leave-active {
+  transition: opacity 0.3s ease;
+}
+.cart-backdrop-enter-from,
+.cart-backdrop-leave-to {
+  opacity: 0;
+}
+
+.cart-panel-enter-active,
+.cart-panel-leave-active {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cart-panel-enter-from,
+.cart-panel-leave-to {
+  transform: translateX(100%);
+}
+
+.badge-enter-active,
+.badge-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+.badge-enter-from,
+.badge-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
 }
 </style>

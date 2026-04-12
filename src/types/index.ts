@@ -4,49 +4,56 @@ export interface ApiError {
   data?: unknown
 }
 
-// Storyblok
-export interface StoryblokAsset {
-  filename: string
-  alt?: string
+// ── Product (from API) ────────────────────────────────────────────
+export interface ProductImage {
+  url: string
+  publicId: string
 }
 
-export interface StoryblokProductContent {
-  _uid: string
+export interface ProductFlavor {
   nombre: string
-  precio: string
-  descripcion: string
-  component: string
-  fotos?: StoryblokAsset[]
+  grupo: 'normal' | 'especial'
+  isActive: boolean
+  limite: number   // 0 = sin límite individual
 }
 
-export interface StoryblokStory {
-  slug: string
-  full_slug: string
-  content: StoryblokProductContent
-}
-
-export interface StoryblokStoriesResponse {
-  stories: StoryblokStory[]
-}
-
-// Normalized product
 export interface Product {
+  _id?: string
   slug: string
   nombre: string
   precio: number
   descripcion: string
-  imagen: string
+  categoria: string
+  imagen: ProductImage
+  inStock: boolean
+  hasStock: boolean
+  stockCount: number
+  isActive: boolean
+  sortOrder?: number
+  hasFlavors?: boolean
+  boxSize?: number
+  flavors?: ProductFlavor[]
+  createdAt?: string
+  updatedAt?: string
 }
 
-// Cart
+// ── Flavor selection (cart) ────────────────────────────────────
+export interface FlavorSelection {
+  nombre: string
+  grupo: string
+  cantidad: number
+}
+
+// ── Cart ──────────────────────────────────────────────────────────
 export interface CartItem {
   slug: string
   nombre: string
   precio: number
   cantidad: number
+  flavorSelections?: FlavorSelection[]
 }
 
-// Customer info for checkout
+// ── Customer info for checkout ────────────────────────────────────
 export interface CustomerInfo {
   nombre: string
   cedula: string
@@ -58,7 +65,7 @@ export interface CustomerInfo {
   mapsUrl?: string
 }
 
-// Payment
+// ── Payment ───────────────────────────────────────────────────────
 export interface PreparePaymentPayload {
   items: CartItem[]
   clientTransactionId: string
@@ -93,6 +100,15 @@ export interface AdminOrder {
   clientTransactionId: string
   trackingToken: string
   customerEmail: string
+  customerName?: string
+  customerPhone?: string
+  cedula?: string
+  deliveryAddress?: {
+    calle: string
+    barrio?: string
+    referencia?: string
+    mapsUrl?: string
+  }
   status: OrderStatus
   total: number
   items: CartItem[]

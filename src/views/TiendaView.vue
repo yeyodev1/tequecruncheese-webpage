@@ -3,9 +3,8 @@ import { ref, onMounted } from 'vue'
 import TheHeader from '@/components/home/TheHeader.vue'
 import TheFooter from '@/components/home/TheFooter.vue'
 import ProductCard from '@/components/tienda/ProductCard.vue'
-import CartDrawer from '@/components/tienda/CartDrawer.vue'
-import { fetchProducts } from '@/services/storyblok.service'
-import { paymentService } from '@/services/payment.service'
+import ProductDetailModal from '@/components/tienda/ProductDetailModal.vue'
+import { productService } from '@/services/product.service'
 import { useCartStore } from '@/stores/cart'
 import type { Product } from '@/types'
 
@@ -13,38 +12,33 @@ const cart = useCartStore()
 const products = ref<Product[]>([])
 const loading = ref(true)
 const error = ref('')
-const checkoutLoading = ref(false)
 
-onMounted(async () => {
+const selectedProduct = ref<Product | null>(null)
+const showDetail = ref(false)
+
+function openDetail(product: Product) {
+  selectedProduct.value = product
+  showDetail.value = true
+}
+
+function onDetailAdded() {
+  showDetail.value = false
+  cart.openCart()
+}
+
+async function loadProducts() {
+  loading.value = true
+  error.value = ''
   try {
-    products.value = await fetchProducts()
+    products.value = await productService.list()
   } catch {
     error.value = 'No se pudieron cargar los productos. Intenta de nuevo.'
   } finally {
     loading.value = false
   }
-})
-
-async function checkout() {
-  const email = cart.customerInfo.email || cart.customerEmail
-  if (cart.isEmpty || checkoutLoading.value || !email) return
-
-  checkoutLoading.value = true
-  try {
-    const clientTransactionId = crypto.randomUUID()
-    const result = await paymentService.preparePayment({
-      items: cart.items,
-      clientTransactionId,
-      customerEmail: email,
-      customerInfo: cart.customerInfo,
-    })
-    window.location.href = result.payWithPayPhone
-  } catch {
-    alert('Hubo un problema al procesar el pago. Por favor intenta de nuevo.')
-  } finally {
-    checkoutLoading.value = false
-  }
 }
+
+onMounted(loadProducts)
 </script>
 
 <template>
@@ -52,53 +46,92 @@ async function checkout() {
     <TheHeader />
 
     <main class="tienda">
-      <div class="tienda__hero">
-        <h1 class="tienda__title">Nuestra Tienda</h1>
-        <p class="tienda__subtitle">Tequeños artesanales listos para disfrutar</p>
-      </div>
+      <!-- ── Hero ──────────────────────────────────────────── -->
+      <section class="tienda__hero">
+        <div class="tienda__hero-inner">
+          <span class="tienda__hero-eyebrow">
+            <i class="fa-solid fa-store"></i>
+            Tienda en línea
+          </span>
+          <h1 class="tienda__hero-title">Nuestros Tequeños</h1>
+          <p class="tienda__hero-sub">
+            Artesanales, crujientes y listos para llegar a tu puerta
+          </p>
+        </div>
+      </section>
 
-      <div class="tienda__layout">
-        <!-- Products section -->
-        <section class="tienda__products">
-          <div v-if="loading" class="tienda__loading">
+      <!-- ── Catalog ─────────────────────────────────────────── -->
+      <section class="tienda__catalog">
+
+        <!-- Catalog header -->
+        <div class="tienda__catalog-head">
+          <div class="tienda__catalog-title">
+            <h2>Catálogo</h2>
+            <span v-if="!loading && products.length > 0" class="tienda__catalog-count">
+              {{ products.length }} productos
+            </span>
+          </div>
+
+          <button
+            v-if="!cart.isEmpty"
+            class="tienda__cart-trigger"
+            @click="cart.openCart"
+          >
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span>Ver carrito</span>
+            <span class="tienda__cart-trigger-badge">{{ cart.totalItems }}</span>
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="tienda__state">
+          <div class="tienda__state-spinner">
             <i class="fa-solid fa-spinner fa-spin"></i>
-            <p>Cargando productos...</p>
           </div>
+          <p>Cargando productos...</p>
+        </div>
 
-          <div v-else-if="error" class="tienda__error">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <p>{{ error }}</p>
-            <button class="btn btn--primary" @click="() => { loading = true; error = ''; fetchProducts().then(p => { products = p }).catch(() => { error = 'Error al cargar.' }).finally(() => { loading = false }) }">
-              Reintentar
-            </button>
+        <!-- Error -->
+        <div v-else-if="error" class="tienda__state tienda__state--error">
+          <div class="tienda__state-icon">
+            <i class="fa-solid fa-circle-exclamation"></i>
           </div>
+          <p>{{ error }}</p>
+          <button class="tienda__retry-btn" @click="loadProducts">
+            <i class="fa-solid fa-rotate-right"></i>
+            Reintentar
+          </button>
+        </div>
 
-          <div v-else-if="products.length === 0" class="tienda__empty">
-            <p>No hay productos disponibles por el momento.</p>
+        <!-- Empty -->
+        <div v-else-if="products.length === 0" class="tienda__state">
+          <div class="tienda__state-icon">
+            <i class="fa-regular fa-face-meh"></i>
           </div>
+          <p>No hay productos disponibles por el momento.</p>
+        </div>
 
-          <div v-else class="tienda__grid">
-            <ProductCard
-              v-for="product in products"
-              :key="product.slug"
-              :product="product"
-              @add-to-cart="cart.addItem($event)"
-            />
-          </div>
-        </section>
-
-        <!-- Cart sidebar -->
-        <aside class="tienda__cart">
-          <CartDrawer @checkout="checkout" />
-          <div v-if="checkoutLoading" class="tienda__checkout-overlay">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <span>Preparando pago...</span>
-          </div>
-        </aside>
-      </div>
+        <!-- Product grid -->
+        <div v-else class="tienda__grid">
+          <ProductCard
+            v-for="product in products"
+            :key="product.slug"
+            :product="product"
+            @select-product="openDetail"
+            @add-to-cart="cart.addItem($event)"
+          />
+        </div>
+      </section>
     </main>
 
     <TheFooter />
+
+    <!-- Product detail modal -->
+    <ProductDetailModal
+      v-model="showDetail"
+      :product="selectedProduct"
+      @added="onDetailAdded"
+    />
   </div>
 </template>
 
@@ -107,110 +140,226 @@ async function checkout() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #f8f6f3;
 }
 
 .tienda {
   flex: 1;
-  padding-top: 80px; // offset for fixed header
+  padding-top: 72px;
 
+  // ── Hero ──────────────────────────────────────────────────────
   &__hero {
     background: $color-accent;
-    color: $white;
+    padding: 4rem 1.5rem 3.5rem;
     text-align: center;
-    padding: 3rem $spacing-sm 2.5rem;
+    position: relative;
+    overflow: hidden;
+
+    // Bottom wave divider
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: #f8f6f3;
+      clip-path: ellipse(60% 100% at 50% 100%);
+    }
 
     @include respond-to('md') {
-      padding: 4rem $spacing-xl 3rem;
+      padding: 5rem 2rem 4.5rem;
     }
   }
 
-  &__title {
-    font-size: clamp(2rem, 5vw, 3rem);
+  &__hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  &__hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba($color-primary, 0.8);
+    background: rgba($color-primary, 0.1);
+    padding: 0.3rem 0.875rem;
+    border-radius: 999px;
+
+    i { font-size: 0.7rem; }
+  }
+
+  &__hero-title {
+    font-size: clamp(2.25rem, 6vw, 3.5rem);
     font-weight: 900;
-    margin: 0 0 0.5rem;
-  }
-
-  &__subtitle {
-    font-size: 1.1rem;
-    opacity: 0.85;
+    color: $white;
     margin: 0;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
   }
 
-  &__layout {
+  &__hero-sub {
+    font-size: 1rem;
+    color: rgba($white, 0.7);
+    margin: 0;
+    max-width: 360px;
+    line-height: 1.5;
+  }
+
+  // ── Catalog ───────────────────────────────────────────────────
+  &__catalog {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 2.5rem $spacing-sm;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    align-items: start;
+    padding: 3rem 1.25rem 5rem;
 
     @include respond-to('md') {
-      padding: 2.5rem $spacing-xl;
-      grid-template-columns: 1fr 340px;
+      padding: 3.5rem 2.5rem 6rem;
     }
   }
 
-  &__grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  &__catalog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
 
-    @include respond-to('md') {
-      grid-template-columns: repeat(2, 1fr);
-    }
+  &__catalog-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
 
-    @include respond-to('lg') {
-      grid-template-columns: repeat(3, 1fr);
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: $color-accent;
+      margin: 0;
+      letter-spacing: -0.01em;
     }
   }
 
-  &__loading,
-  &__empty,
-  &__error {
+  &__catalog-count {
+    font-size: 0.8rem;
+    color: #bbb;
+    font-weight: 600;
+  }
+
+  // ── Cart trigger (inline button) ──────────────────────────────
+  &__cart-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: $color-accent;
+    color: $color-primary;
+    border: none;
+    border-radius: 999px;
+    padding: 0.55rem 1rem 0.55rem 0.875rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    i { font-size: 0.85rem; }
+
+    &:hover {
+      opacity: 0.88;
+      transform: translateY(-1px);
+    }
+  }
+
+  &__cart-trigger-badge {
+    background: $color-primary;
+    color: $color-accent;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 900;
+  }
+
+  // ── State: loading / error / empty ────────────────────────────
+  &__state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 1rem;
-    min-height: 300px;
-    color: #888;
+    min-height: 320px;
+    color: #aaa;
     text-align: center;
+    background: $white;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
 
-    i {
-      font-size: 2.5rem;
-      color: $color-primary;
-    }
+    p { margin: 0; font-size: 0.95rem; }
 
-    p {
-      margin: 0;
-    }
+    &--error { color: #c53030; }
   }
 
-  &__cart {
-    position: relative;
-    order: -1;
-
-    @include respond-to('md') {
-      order: 0;
-    }
+  &__state-spinner {
+    i { font-size: 2rem; color: rgba($color-accent, 0.3); }
   }
 
-  &__checkout-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.85);
-    border-radius: 1.25rem;
+  &__state-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #f5f5f5;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    font-weight: 600;
-    color: $color-accent;
 
-    i {
-      font-size: 2rem;
+    i { font-size: 1.4rem; color: #ccc; }
+
+    .tienda__state--error & {
+      background: #fff5f5;
+      i { color: #c53030; }
+    }
+  }
+
+  &__retry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: $color-accent;
+    color: $color-primary;
+    border: none;
+    border-radius: 0.625rem;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:hover { opacity: 0.85; }
+  }
+
+  // ── Product grid ──────────────────────────────────────────────
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
+
+    @include respond-to('sm') {
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+
+    @include respond-to('lg') {
+      gap: 1.75rem;
     }
   }
 }

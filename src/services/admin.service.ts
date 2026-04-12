@@ -36,10 +36,10 @@ class AdminService extends APIBase {
     return res.data
   }
 
-  async updateStatus(id: string, status: OrderStatus): Promise<AdminOrder> {
+  async updateStatus(id: string, status: OrderStatus, note?: string): Promise<AdminOrder> {
     const res = await this.patch<AdminOrder>(
       `admin/orders/${id}/status`,
-      { status },
+      { status, ...(note ? { note } : {}) },
       this.getAdminHeaders(),
     )
     return res.data
@@ -49,6 +49,34 @@ class AdminService extends APIBase {
     const res = await this.post<AdminOrder>(
       `admin/orders/${id}/notes`,
       { text },
+      this.getAdminHeaders(),
+    )
+    return res.data
+  }
+
+  async sendEmail(id: string, subject: string, message: string): Promise<AdminOrder> {
+    const res = await this.post<{ ok: boolean; order: AdminOrder }>(
+      `admin/orders/${id}/send-email`,
+      { subject, message },
+      this.getAdminHeaders(),
+    )
+    return res.data.order
+  }
+
+  async listCategories(): Promise<{ _id: string; name: string }[]> {
+    const res = await this.get<{ _id: string; name: string }[]>('admin/categories', this.getAdminHeaders())
+    return res.data
+  }
+
+  async createCategory(name: string): Promise<{ _id: string; name: string }> {
+    const res = await this.post<{ _id: string; name: string }>('admin/categories', { name }, this.getAdminHeaders())
+    return res.data
+  }
+
+  async deleteCategory(id: string, reassignTo?: string): Promise<{ deleted: boolean; affectedProducts: number }> {
+    const res = await this.delete_<{ deleted: boolean; affectedProducts: number }>(
+      `admin/categories/${id}`,
+      { reassignTo },
       this.getAdminHeaders(),
     )
     return res.data

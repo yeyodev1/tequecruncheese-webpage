@@ -14,6 +14,12 @@ const routes: Array<RouteRecordRaw> = [
     meta: { title: 'Tienda' },
   },
   {
+    path: '/checkout',
+    name: 'Checkout',
+    component: () => import('../views/CheckoutView.vue'),
+    meta: { title: 'Completa tu pedido' },
+  },
+  {
     path: '/pago/confirmado',
     name: 'PagoConfirmado',
     component: () => import('../views/PagoConfirmadoView.vue'),
@@ -68,6 +74,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'AdminDashboard',
     component: () => import('../views/AdminOrdenesView.vue'),
     meta: { title: 'Admin · Órdenes', requiresAdmin: true },
+  },
+  {
+    path: '/admin/productos',
+    name: 'AdminProductos',
+    component: () => import('../views/AdminProductosView.vue'),
+    meta: { title: 'Admin · Productos', requiresAdmin: true },
   },
 ]
 

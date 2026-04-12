@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import logoSmall from '@/assets/logos/logo-small.png'
+const logoSmall = 'https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small'
 
 const visible = ref(true)
 const hiding  = ref(false)

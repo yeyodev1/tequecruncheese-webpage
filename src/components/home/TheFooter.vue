@@ -26,7 +26,7 @@ const scrollToSection = (event: Event, targetId: string) => {
     <div class="footer__container">
       <!-- Brand block -->
       <div class="footer__brand">
-        <img src="@/assets/logos/logo-small.png" alt="TequeCruncheese" class="footer__logo" />
+        <img src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small" alt="TequeCruncheese" class="footer__logo" />
         <p class="footer__tagline">Tequeños artesanales hechos a mano.<br />Perfectamente dorados, increíblemente quesudos.</p>
 
         <!-- Social pills -->

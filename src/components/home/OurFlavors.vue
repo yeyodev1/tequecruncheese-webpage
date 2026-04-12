@@ -4,18 +4,15 @@ import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 import GalleryModal from './GalleryModal.vue'
 
-import img1 from '@/assets/stock/DSC06085.jpg'
-import img2 from '@/assets/stock/DSC06129.jpg'
-import img3 from '@/assets/stock/DSC06140.jpg'
-import img4 from '@/assets/stock/DSC06177.jpg'
+import { cloudImg } from '@/services/cloudinary'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const flavors = [
-  { name: 'Queso', desc: 'Clásico blanco artesanal, con la textura perfecta que se estira en cada bocado. El sabor tradicional en su máxima expresión.', img: img1, type: 'Clásico' },
-  { name: 'Jamón con Queso', desc: 'La combinación perfecta y el contraste ideal. El ahumado del jamón abraza al queso derretido en una experiencia inigualable.', img: img2, type: 'Salado' },
-  { name: 'Tocino / Queso', desc: 'Extra crujiente y ahumado. Para los paladares exigentes que buscan un golpe de sabor intenso y reconfortante.', img: img3, type: 'Premium' },
-  { name: 'Guayaba / Queso', desc: 'El contraste dulce/salado llevado al extremo. Una explosión tropical que te hará agua la boca al instante.', img: img4, type: 'Tropical' },
+  { name: 'Queso', desc: 'Clásico blanco artesanal, con la textura perfecta que se estira en cada bocado. El sabor tradicional en su máxima expresión.', img: cloudImg('DSC06085.jpg', { width: 800, crop: 'fill' }), type: 'Clásico' },
+  { name: 'Jamón con Queso', desc: 'La combinación perfecta y el contraste ideal. El ahumado del jamón abraza al queso derretido en una experiencia inigualable.', img: cloudImg('DSC06129.jpg', { width: 800, crop: 'fill' }), type: 'Salado' },
+  { name: 'Tocino / Queso', desc: 'Extra crujiente y ahumado. Para los paladares exigentes que buscan un golpe de sabor intenso y reconfortante.', img: cloudImg('DSC06140.jpg', { width: 800, crop: 'fill' }), type: 'Premium' },
+  { name: 'Guayaba / Queso', desc: 'El contraste dulce/salado llevado al extremo. Una explosión tropical que te hará agua la boca al instante.', img: cloudImg('DSC06177.jpg', { width: 800, crop: 'fill' }), type: 'Tropical' },
   { name: 'Chocolate', desc: 'Relleno profundo, oscuro y derretido que inunda el crujiente envoltorio. Para los amantes del cacao puro.', img: null, type: 'Dulce' },
   { name: 'Nutella', desc: 'El favorito indiscutible. Cremosa crema de avellanas rebosante de sabor, perfecta para compartir o disfrutar a solas.', img: null, type: 'Dulce' },
   { name: 'Sabor de Temporada', desc: 'Edición especial (como Ferrero Rocher o innovaciones del mes) pensados para sorprenderte constantemente.', img: null, type: 'Premium' },

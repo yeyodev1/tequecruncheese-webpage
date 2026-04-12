@@ -26,7 +26,8 @@ onMounted(async () => {
 })
 
 async function checkout() {
-  if (cart.isEmpty || checkoutLoading.value || !cart.customerEmail) return
+  const email = cart.customerInfo.email || cart.customerEmail
+  if (cart.isEmpty || checkoutLoading.value || !email) return
 
   checkoutLoading.value = true
   try {
@@ -34,7 +35,8 @@ async function checkout() {
     const result = await paymentService.preparePayment({
       items: cart.items,
       clientTransactionId,
-      customerEmail: cart.customerEmail,
+      customerEmail: email,
+      customerInfo: cart.customerInfo,
     })
     window.location.href = result.payWithPayPhone
   } catch {

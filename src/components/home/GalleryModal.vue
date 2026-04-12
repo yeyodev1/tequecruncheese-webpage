@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import gsap from 'gsap'
-import logoSmall from '@/assets/logos/logo-small.png'
+import { cloudImg, CLOUD_IDS } from '@/services/cloudinary'
 
 const props = defineProps({
   isOpen: {
@@ -12,8 +12,12 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const imageModules = import.meta.glob('@/assets/stock/DSC*.jpg', { eager: true, import: 'default' })
-const allImages = Object.values(imageModules) as string[]
+const logoSmall = cloudImg('logo-small.png')
+
+// Build gallery from Cloudinary — no local blobs downloaded
+const allImages = Object.keys(CLOUD_IDS)
+  .filter(k => k.startsWith('DSC') && k.endsWith('.jpg'))
+  .map(k => cloudImg(k, { width: 900, crop: 'fill' }))
 
 const displayImages = ref<string[]>([])
 const selectedImage = ref<string | null>(null)

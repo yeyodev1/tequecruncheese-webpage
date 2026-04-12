@@ -1,15 +1,26 @@
 import { defineStore } from 'pinia'
-import type { CartItem } from '@/types'
+import type { CartItem, CustomerInfo } from '@/types'
 
 export interface CartState {
   items: CartItem[]
   customerEmail: string
+  customerInfo: CustomerInfo
 }
 
 export const useCartStore = defineStore('cart', {
   state: (): CartState => ({
     items: [],
     customerEmail: '',
+    customerInfo: {
+      nombre: '',
+      cedula: '',
+      email: '',
+      telefono: '',
+      calle: '',
+      barrio: '',
+      referencia: '',
+      mapsUrl: '',
+    },
   }),
 
   getters: {
@@ -48,9 +59,23 @@ export const useCartStore = defineStore('cart', {
       this.customerEmail = email
     },
 
+    setCustomerInfo(info: Partial<CustomerInfo>) {
+      this.customerInfo = { ...this.customerInfo, ...info }
+    },
+
     clear() {
       this.items = []
       this.customerEmail = ''
+      this.customerInfo = {
+        nombre: '',
+        cedula: '',
+        email: '',
+        telefono: '',
+        calle: '',
+        barrio: '',
+        referencia: '',
+        mapsUrl: '',
+      }
     },
   },
 })

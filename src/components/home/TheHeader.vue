@@ -59,7 +59,7 @@ onUnmounted(() => {
     <div class="header__container">
       <!-- Logo → home -->
       <RouterLink to="/" class="header__logo">
-        <img src="@/assets/logos/logo-small.png" alt="TequeCruncheese Logo" />
+        <img src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small" alt="TequeCruncheese Logo" />
       </RouterLink>
 
       <!-- Desktop Nav -->
@@ -68,7 +68,7 @@ onUnmounted(() => {
         <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
         <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
         <RouterLink to="/tienda" class="header__link">Tienda</RouterLink>
-        <a href="#mis-pedidos" class="header__link" @click="scrollToSection($event, 'mis-pedidos')">Mis pedidos</a>
+        <RouterLink to="/mis-pedidos" class="header__link">Mis pedidos</RouterLink>
       </nav>
 
       <div class="header__actions header__actions--desktop">
@@ -97,7 +97,7 @@ onUnmounted(() => {
         <a href="#combos" class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
         <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
         <RouterLink to="/tienda" class="header__link" @click="isMobileMenuOpen = false">Tienda</RouterLink>
-        <a href="#mis-pedidos" class="header__link" @click="scrollToSection($event, 'mis-pedidos')">Mis pedidos</a>
+        <RouterLink to="/mis-pedidos" class="header__link" @click="isMobileMenuOpen = false">Mis pedidos</RouterLink>
         <a :href="waPedido" target="_blank" rel="noopener" class="btn btn--primary header__mobile-btn" style="text-decoration:none;">
           <i class="fa-brands fa-whatsapp"></i> Pide Ahora
         </a>

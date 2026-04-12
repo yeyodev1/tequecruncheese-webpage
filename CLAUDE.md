@@ -38,6 +38,33 @@ SCSS modules with global variables for colors and fonts. `styles/index.scss` is 
 ### Components (`src/components/home/`)
 All current UI is home-page specific, organized under `src/components/home/`. Path alias `@/` maps to `src/`.
 
+## Image Management (Cloudinary)
+All project images are served from **Cloudinary** (cloud: `dvq6znk71`). **Never import local `@/assets/stock/` or `@/assets/logos/` files in components.**
+
+- Use `cloudImg(filename, opts?)` from `@/services/cloudinary` to get optimized CDN URLs.
+- Use `useLazyImage(filename, opts?)` composable from `@/composables/useLazyImage` for Intersection Observer lazy loading.
+- The mapping file `src/assets/cloudinary-map.json` and `CLOUD_IDS` in `cloudinary.ts` contain all uploaded images.
+- To upload new images: `node scripts/upload-to-cloudinary.mjs`
+- The AppLoader waits for `window.load` — since images are now CDN, load time is dramatically reduced.
+
+## Routes (full list)
+- `/` — HomeView
+- `/tienda` — TiendaView
+- `/pago/confirmado` and `/pay-response` — PagoConfirmadoView (Payphone callback)
+- `/pedido/:token` — TrackOrderView (public order tracking)
+- `/admin` — AdminLoginView
+- `/admin/dashboard` — AdminOrdenesView (requiresAdmin guard)
+
+## Backend (`tequecrunchesse-backapp`)
+Express 5 + TypeScript + Mongoose. Runs on port 8101. Routes:
+- `/api/admin/*` — Admin auth + order management (JWT guard)
+- `/api/payphone/*` — Payphone Button API (prepare + confirm)
+- `/api/orders/*` — Public order tracking
+
+Payment gateway: **Payphone Button API** (`/button/Prepare` + `/button/Confirm`).
+Email notifications: **Resend** (order pending, payment approved, payment rejected).
+Admin credentials: `admin@tequecruncheese.com` / `123456789`
+
 ## Key Conventions
 - This is a **dual-project setup**: this repo is the **frontend**; the backend lives separately at the same directory level. Always use subagents for research tasks to keep context clean.
 - Always update `CLAUDE.md` and `MEMORY.md` when new instructions or architectural decisions are introduced.

@@ -6,21 +6,62 @@ const emit = defineEmits<{ checkout: [] }>()
 const cart = useCartStore()
 
 const formattedTotal = computed(() => `$${cart.totalPrice.toFixed(2)}`)
-const emailTouched = ref(false)
 
-const emailValid = computed(() => {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return re.test(cart.customerEmail)
+// ── Touched state ─────────────────────────────────────────
+const touched = ref({
+  nombre: false,
+  cedula: false,
+  email: false,
+  telefono: false,
+  calle: false,
 })
 
-function onEmailInput(e: Event) {
-  cart.setEmail((e.target as HTMLInputElement).value)
+function markTouched(field: keyof typeof touched.value) {
+  touched.value[field] = true
 }
 
-function onEmailBlur() {
-  emailTouched.value = true
+// ── Cedula validation (Ecuador algorithm) ─────────────────
+function validarCedula(cedula: string): boolean {
+  if (!/^\d{10}$/.test(cedula)) return false
+  const provincia = parseInt(cedula.slice(0, 2))
+  if (provincia < 1 || provincia > 24) return false
+  const digits = cedula.split('').map(Number)
+  const verifier = digits[9]
+  const sum = digits.slice(0, 9).reduce((acc, d, i) => {
+    let v = i % 2 === 0 ? d * 2 : d
+    if (v > 9) v -= 9
+    return acc + v
+  }, 0)
+  const mod = sum % 10
+  return mod === 0 ? verifier === 0 : verifier === 10 - mod
 }
 
+// ── Field validators ──────────────────────────────────────
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cart.customerInfo.email))
+const nombreValid = computed(() => cart.customerInfo.nombre.trim().length >= 3)
+const cedulaValid = computed(() => validarCedula(cart.customerInfo.cedula))
+const telefonoValid = computed(() =>
+  /^(09|02)\d{8}$/.test(cart.customerInfo.telefono),
+)
+const calleValid = computed(() => cart.customerInfo.calle.trim().length >= 5)
+
+const formValid = computed(
+  () =>
+    emailValid.value &&
+    nombreValid.value &&
+    cedulaValid.value &&
+    telefonoValid.value &&
+    calleValid.value,
+)
+
+// ── Input handlers ────────────────────────────────────────
+function onFieldInput(field: keyof typeof cart.customerInfo, value: string) {
+  cart.setCustomerInfo({ [field]: value })
+  // keep backward compat with customerEmail in store
+  if (field === 'email') cart.setEmail(value)
+}
+
+// ── Cart controls ─────────────────────────────────────────
 const WHATSAPP_NUMBER = '593963237880'
 
 function orderByWhatsApp() {
@@ -94,30 +135,152 @@ function decrement(slug: string) {
         <strong>{{ formattedTotal }}</strong>
       </div>
 
-      <div class="cart-drawer__email-field">
-        <label class="cart-drawer__email-label" for="cart-email">
-          <i class="fa-solid fa-envelope"></i>
-          Correo para confirmación <span class="cart-drawer__required">*</span>
-        </label>
-        <input
-          id="cart-email"
-          type="email"
-          class="cart-drawer__email-input"
-          :class="{ 'cart-drawer__email-input--error': emailTouched && !emailValid }"
-          :value="cart.customerEmail"
-          placeholder="tu@correo.com"
-          autocomplete="email"
-          @input="onEmailInput"
-          @blur="onEmailBlur"
-        />
-        <span v-if="emailTouched && !emailValid" class="cart-drawer__email-error">
-          Ingresa un correo válido para recibir tu confirmación.
-        </span>
+      <!-- Customer form -->
+      <div class="cart-drawer__form">
+        <p class="cart-drawer__form-title">
+          <i class="fa-solid fa-user"></i> Datos de entrega
+        </p>
+
+        <!-- Nombre -->
+        <div class="cart-drawer__field">
+          <label for="cart-nombre">
+            Nombre completo <span class="cart-drawer__required">*</span>
+          </label>
+          <input
+            id="cart-nombre"
+            type="text"
+            :value="cart.customerInfo.nombre"
+            :class="{ 'cart-drawer__input--error': touched.nombre && !nombreValid }"
+            placeholder="Juan Pérez"
+            autocomplete="name"
+            @input="onFieldInput('nombre', ($event.target as HTMLInputElement).value)"
+            @blur="markTouched('nombre')"
+          />
+          <span v-if="touched.nombre && !nombreValid" class="cart-drawer__field-error">
+            Ingresa tu nombre completo.
+          </span>
+        </div>
+
+        <!-- Cédula -->
+        <div class="cart-drawer__field">
+          <label for="cart-cedula">
+            Cédula <span class="cart-drawer__required">*</span>
+          </label>
+          <input
+            id="cart-cedula"
+            type="text"
+            :value="cart.customerInfo.cedula"
+            :class="{ 'cart-drawer__input--error': touched.cedula && !cedulaValid }"
+            placeholder="0912345678"
+            maxlength="10"
+            @input="onFieldInput('cedula', ($event.target as HTMLInputElement).value)"
+            @blur="markTouched('cedula')"
+          />
+          <span v-if="touched.cedula && !cedulaValid" class="cart-drawer__field-error">
+            Cédula ecuatoriana inválida.
+          </span>
+        </div>
+
+        <!-- Email -->
+        <div class="cart-drawer__field">
+          <label for="cart-email">
+            Correo electrónico <span class="cart-drawer__required">*</span>
+          </label>
+          <input
+            id="cart-email"
+            type="email"
+            :value="cart.customerInfo.email"
+            :class="{ 'cart-drawer__input--error': touched.email && !emailValid }"
+            placeholder="tu@correo.com"
+            autocomplete="email"
+            @input="onFieldInput('email', ($event.target as HTMLInputElement).value)"
+            @blur="markTouched('email')"
+          />
+          <span v-if="touched.email && !emailValid" class="cart-drawer__field-error">
+            Ingresa un correo válido.
+          </span>
+        </div>
+
+        <!-- Teléfono -->
+        <div class="cart-drawer__field">
+          <label for="cart-telefono">
+            Teléfono <span class="cart-drawer__required">*</span>
+          </label>
+          <input
+            id="cart-telefono"
+            type="tel"
+            :value="cart.customerInfo.telefono"
+            :class="{ 'cart-drawer__input--error': touched.telefono && !telefonoValid }"
+            placeholder="0991234567"
+            maxlength="10"
+            autocomplete="tel"
+            @input="onFieldInput('telefono', ($event.target as HTMLInputElement).value)"
+            @blur="markTouched('telefono')"
+          />
+          <span v-if="touched.telefono && !telefonoValid" class="cart-drawer__field-error">
+            Número ecuatoriano inválido (09... o 02...).
+          </span>
+        </div>
+
+        <!-- Calle / Dirección -->
+        <div class="cart-drawer__field">
+          <label for="cart-calle">
+            Dirección <span class="cart-drawer__required">*</span>
+          </label>
+          <input
+            id="cart-calle"
+            type="text"
+            :value="cart.customerInfo.calle"
+            :class="{ 'cart-drawer__input--error': touched.calle && !calleValid }"
+            placeholder="Av. 9 de Octubre y García Moreno"
+            @input="onFieldInput('calle', ($event.target as HTMLInputElement).value)"
+            @blur="markTouched('calle')"
+          />
+          <span v-if="touched.calle && !calleValid" class="cart-drawer__field-error">
+            Ingresa tu dirección.
+          </span>
+        </div>
+
+        <!-- Barrio -->
+        <div class="cart-drawer__field">
+          <label for="cart-barrio">Barrio / Sector</label>
+          <input
+            id="cart-barrio"
+            type="text"
+            :value="cart.customerInfo.barrio"
+            placeholder="Urdesa Central"
+            @input="onFieldInput('barrio', ($event.target as HTMLInputElement).value)"
+          />
+        </div>
+
+        <!-- Referencia -->
+        <div class="cart-drawer__field">
+          <label for="cart-referencia">Referencia</label>
+          <input
+            id="cart-referencia"
+            type="text"
+            :value="cart.customerInfo.referencia"
+            placeholder="Frente al parque"
+            @input="onFieldInput('referencia', ($event.target as HTMLInputElement).value)"
+          />
+        </div>
+
+        <!-- Google Maps URL -->
+        <div class="cart-drawer__field">
+          <label for="cart-maps">Link de Google Maps</label>
+          <input
+            id="cart-maps"
+            type="url"
+            :value="cart.customerInfo.mapsUrl"
+            placeholder="Pega aquí tu link de Google Maps"
+            @input="onFieldInput('mapsUrl', ($event.target as HTMLInputElement).value)"
+          />
+        </div>
       </div>
 
       <button
         class="btn btn--primary cart-drawer__checkout-btn"
-        :disabled="!emailValid"
+        :disabled="!formValid"
         @click="emit('checkout')"
       >
         <i class="fa-solid fa-lock"></i>
@@ -290,6 +453,7 @@ function decrement(slug: string) {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    overflow-y: auto;
   }
 
   &__total {
@@ -304,46 +468,65 @@ function decrement(slug: string) {
     }
   }
 
-  &__email-field {
+  // ── Form ─────────────────────────────────────────────────
+  &__form {
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
+    gap: 0.875rem;
+    border: 1px solid #f0f0f0;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: #fafafa;
   }
 
-  &__email-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #555;
+  &__form-title {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: $color-accent;
     display: flex;
     align-items: center;
     gap: 0.375rem;
   }
 
-  &__required {
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+      background: $white;
+
+      &:focus {
+        border-color: $color-accent;
+      }
+    }
+  }
+
+  &__input--error {
+    border-color: #e53e3e !important;
+  }
+
+  &__field-error {
+    font-size: 0.72rem;
     color: #e53e3e;
   }
 
-  &__email-input {
-    width: 100%;
-    padding: 0.6rem 0.75rem;
-    border: 1.5px solid #e0e0e0;
-    border-radius: 0.5rem;
-    font-size: 0.9rem;
-    outline: none;
-    transition: border-color 0.15s;
-    box-sizing: border-box;
-
-    &:focus {
-      border-color: $color-accent;
-    }
-
-    &--error {
-      border-color: #e53e3e;
-    }
-  }
-
-  &__email-error {
-    font-size: 0.75rem;
+  &__required {
     color: #e53e3e;
   }
 

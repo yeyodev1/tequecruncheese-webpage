@@ -4,28 +4,26 @@ import { RouterLink } from 'vue-router'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 
-import img1 from '@/assets/stock/DSC06085.jpg'
-import img2 from '@/assets/stock/DSC06166.jpg'
-import img3 from '@/assets/stock/DSC06180.jpg'
+import { cloudImg } from '@/services/cloudinary'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const showcaseItems = ref([
   {
     id: 1,
-    image: img1,
+    image: cloudImg('DSC06085.jpg', { width: 900, crop: 'fill' }),
     title: 'El Tequeño Clásico',
     description: 'Dorado, crujiente y lleno de queso blanco artesanal.',
   },
   {
     id: 2,
-    image: img2,
+    image: cloudImg('DSC06166.jpg', { width: 900, crop: 'fill' }),
     title: 'Perfectos para Compartir',
     description: 'Eleva tus reuniones con el mejor iniciador de fiestas.',
   },
   {
     id: 3,
-    image: img3,
+    image: cloudImg('DSC06180.jpg', { width: 900, crop: 'fill' }),
     title: 'Salsas Gourmet',
     description: 'Acompaña nuestras delicias crujientes con exquisitas salsas artesanales.',
   }

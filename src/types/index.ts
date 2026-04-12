@@ -46,11 +46,24 @@ export interface CartItem {
   cantidad: number
 }
 
+// Customer info for checkout
+export interface CustomerInfo {
+  nombre: string
+  cedula: string
+  email: string
+  telefono: string
+  calle: string
+  barrio?: string
+  referencia?: string
+  mapsUrl?: string
+}
+
 // Payment
 export interface PreparePaymentPayload {
   items: CartItem[]
   clientTransactionId: string
   customerEmail: string
+  customerInfo?: CustomerInfo
 }
 
 export interface TrackOrderResponse {

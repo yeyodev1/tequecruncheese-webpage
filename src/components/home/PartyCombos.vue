@@ -2,7 +2,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
-import bgImage from '@/assets/stock/DSC06166.jpg'
+import { cloudImg } from '@/services/cloudinary'
+const bgImage = cloudImg('DSC06166.jpg', { width: 1400, crop: 'fill' })
 
 gsap.registerPlugin(ScrollTrigger)
 

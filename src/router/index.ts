@@ -31,6 +31,32 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/TrackOrderView.vue'),
     meta: { title: 'Estado de tu pedido' },
   },
+  // ── Customer auth ───────────────────────────────────────────
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/LoginView.vue'),
+    meta: { title: 'Iniciar sesión' },
+  },
+  {
+    path: '/recuperar-contrasena',
+    name: 'RecuperarContrasena',
+    component: () => import('../views/RecuperarContrasenaView.vue'),
+    meta: { title: 'Recuperar contraseña' },
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/ResetPasswordView.vue'),
+    meta: { title: 'Nueva contraseña' },
+  },
+  {
+    path: '/mis-pedidos',
+    name: 'MisPedidos',
+    component: () => import('../views/MisPedidosView.vue'),
+    meta: { title: 'Mis pedidos', requiresAuth: true },
+  },
+  // ── Admin ───────────────────────────────────────────────────
   {
     path: '/admin',
     name: 'AdminLogin',
@@ -59,16 +85,18 @@ router.beforeEach((to, _from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta?.requiresAuth)
   const requiresAdmin = to.matched.some((record) => record.meta?.requiresAdmin)
 
+  // Customer auth guard — redirect to /login, preserving intended destination
   if (requiresAuth && !hasToken) {
-    return next({ path: '/login', replace: true })
+    return next({ path: '/login', query: { redirect: to.fullPath }, replace: true })
   }
 
   if (requiresAdmin && !hasAdminToken) {
     return next({ path: '/admin', replace: true })
   }
 
+  // If already logged in, skip login page
   if (to.path === '/login' && hasToken) {
-    return next({ path: '/', replace: true })
+    return next({ path: '/mis-pedidos', replace: true })
   }
 
   if (to.path === '/admin' && hasAdminToken) {

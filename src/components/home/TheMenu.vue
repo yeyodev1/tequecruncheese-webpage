@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import menuBg from '@/assets/stock/DSC06039.jpg'
+import { cloudImg } from '@/services/cloudinary'
+const menuBg = cloudImg('DSC06039.jpg', { width: 1400, crop: 'fill' })
 
 const activeCategory = ref('sabores')
 

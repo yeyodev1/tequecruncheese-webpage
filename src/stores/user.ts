@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { authService } from '@/services/auth.service'
 
 export interface UserState {
   id: string | null
@@ -14,6 +15,12 @@ export const useUserStore = defineStore('user', {
     email: null,
     isAuthenticated: false,
   }),
+
+  getters: {
+    isLoggedIn: (_state): boolean => {
+      return !!localStorage.getItem('access_token')
+    },
+  },
 
   actions: {
     hydrate() {
@@ -34,6 +41,20 @@ export const useUserStore = defineStore('user', {
       if (payload.name) this.name = payload.name
       if (payload.email) this.email = payload.email
       this.isAuthenticated = true
+    },
+
+    async login(email: string, password: string): Promise<void> {
+      const result = await authService.login(email, password)
+      localStorage.setItem('access_token', result.token)
+      this.setUser({
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+      })
+    },
+
+    logout() {
+      this.clear()
     },
 
     clear() {

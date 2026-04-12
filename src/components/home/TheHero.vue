@@ -1,18 +1,21 @@
 <script setup lang="ts">
+import { cloudImg } from '@/services/cloudinary'
+
 const waBase = 'https://wa.me/593963237880?text='
 const waPedido = waBase + encodeURIComponent('Hola TequeCruncheese! 👋 Me gustaría hacer un pedido de tequeños. ¿Cuáles son los productos y precios disponibles?')
 
-import img1 from '@/assets/stock/DSC05880.jpg'
-import img2 from '@/assets/stock/DSC06027.jpg'
-import img3 from '@/assets/stock/DSC06029.jpg'
-import img4 from '@/assets/stock/DSC06085.jpg'
-import img5 from '@/assets/stock/DSC06117.jpg'
-import img6 from '@/assets/stock/DSC06129.jpg'
-import img7 from '@/assets/stock/DSC06166.jpg'
-import img8 from '@/assets/stock/DSC06180.jpg'
-
-const col1 = [img1, img2, img3, img4]
-const col2 = [img5, img6, img7, img8]
+const col1 = [
+  cloudImg('DSC05880.jpg', { width: 600, crop: 'fill' }),
+  cloudImg('DSC06027.jpg', { width: 600, crop: 'fill' }),
+  cloudImg('DSC06029.jpg', { width: 600, crop: 'fill' }),
+  cloudImg('DSC06085.jpg', { width: 600, crop: 'fill' }),
+]
+const col2 = [
+  cloudImg('DSC06117.jpg', { width: 600, crop: 'fill' }),
+  cloudImg('DSC06129.jpg', { width: 600, crop: 'fill' }),
+  cloudImg('DSC06166.jpg', { width: 600, crop: 'fill' }),
+  cloudImg('DSC06180.jpg', { width: 600, crop: 'fill' }),
+]
 </script>
 
 <template>

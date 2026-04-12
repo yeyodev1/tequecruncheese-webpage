@@ -5,6 +5,8 @@ import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { useModalStore } from '@/stores/modal'
 
+import logo from '@/assets/logo/logo.png'
+
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -17,8 +19,8 @@ const waPedido = 'https://wa.me/593963237880?text=' + encodeURIComponent(
 )
 
 const isScrolled = ref(false)
-const isHidden   = ref(false)
-let lastScrollY  = 0
+const isHidden = ref(false)
+let lastScrollY = 0
 const isMobileMenuOpen = ref(false)
 const isUserMenuOpen = ref(false)
 
@@ -152,7 +154,7 @@ onUnmounted(() => {
       <!-- Logo -->
       <RouterLink to="/" class="header__logo">
         <img
-          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+          :src="logo"
           alt="TequeCruncheese"
         />
       </RouterLink>
@@ -346,7 +348,7 @@ onUnmounted(() => {
   width: 100%;
   z-index: $z-index-nav;
   transition: background 0.35s ease, padding 0.35s ease, box-shadow 0.35s ease,
-              backdrop-filter 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   padding: $spacing-md 0;
   background: transparent;
 
@@ -386,7 +388,9 @@ onUnmounted(() => {
     }
   }
 
-  &--scrolled &__logo img { height: 36px; }
+  &--scrolled &__logo img {
+    height: 36px;
+  }
 
   // ── Desktop nav ─────────────────────────────────────────────
   &__nav {
@@ -395,7 +399,9 @@ onUnmounted(() => {
     gap: $spacing-md;
     flex: 1;
 
-    @include respond-to('lg') { display: flex; }
+    @include respond-to('lg') {
+      display: flex;
+    }
   }
 
   &__link {
@@ -408,7 +414,9 @@ onUnmounted(() => {
     transition: color 0.2s ease, opacity 0.2s ease;
     white-space: nowrap;
 
-    &:hover { color: $color-secondary; }
+    &:hover {
+      color: $color-secondary;
+    }
 
     &--tienda {
       display: inline-flex;
@@ -423,7 +431,9 @@ onUnmounted(() => {
       border: 2px solid transparent;
       transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
 
-      i { font-size: 0.78rem; }
+      i {
+        font-size: 0.78rem;
+      }
 
       &:hover {
         background: darken(#FED47F, 8%);
@@ -435,12 +445,18 @@ onUnmounted(() => {
 
   &--scrolled &__link {
     color: rgba($color-primary, 0.85);
-    &:hover { color: $color-primary; }
+
+    &:hover {
+      color: $color-primary;
+    }
 
     &--tienda {
       background: $color-accent;
       color: $color-primary !important;
-      &:hover { background: lighten(#572612, 8%); }
+
+      &:hover {
+        background: lighten(#572612, 8%);
+      }
     }
   }
 
@@ -451,7 +467,9 @@ onUnmounted(() => {
     gap: 0.625rem;
     flex-shrink: 0;
 
-    @include respond-to('lg') { display: flex; }
+    @include respond-to('lg') {
+      display: flex;
+    }
   }
 
   // ── Admin badge ──────────────────────────────────────────────
@@ -470,7 +488,9 @@ onUnmounted(() => {
     border: 1.5px solid rgba($color-accent, 0.2);
     transition: background 0.2s, border-color 0.2s;
 
-    i { font-size: 0.75rem; }
+    i {
+      font-size: 0.75rem;
+    }
 
     &:hover {
       background: rgba($color-primary, 0.35);
@@ -518,7 +538,8 @@ onUnmounted(() => {
     border-color: rgba($color-primary, 0.25);
     background: rgba($color-primary, 0.1);
 
-    &:hover, &--open {
+    &:hover,
+    &--open {
       background: rgba($color-primary, 0.2);
       border-color: rgba($color-primary, 0.5);
     }
@@ -538,7 +559,10 @@ onUnmounted(() => {
     font-family: $font-secondary;
     flex-shrink: 0;
 
-    i { font-size: 0.72rem; font-weight: 400; }
+    i {
+      font-size: 0.72rem;
+      font-weight: 400;
+    }
   }
 
   &--scrolled &__user-avatar {
@@ -556,7 +580,9 @@ onUnmounted(() => {
     white-space: nowrap;
   }
 
-  &--scrolled &__user-name { color: $color-primary; }
+  &--scrolled &__user-name {
+    color: $color-primary;
+  }
 
   &__user-chevron {
     font-size: 0.6rem;
@@ -564,10 +590,14 @@ onUnmounted(() => {
     opacity: 0.6;
     transition: transform 0.2s ease;
 
-    .header__user-pill--open & { transform: rotate(180deg); }
+    .header__user-pill--open & {
+      transform: rotate(180deg);
+    }
   }
 
-  &--scrolled &__user-chevron { color: $color-primary; }
+  &--scrolled &__user-chevron {
+    color: $color-primary;
+  }
 
   // ── Dropdown ────────────────────────────────────────────────
   &__user-dropdown {
@@ -619,13 +649,20 @@ onUnmounted(() => {
         text-align: center;
       }
 
-      &:hover { background: #f8f5f0; }
+      &:hover {
+        background: #f8f5f0;
+      }
 
       &--danger {
         color: #c53030;
 
-        i { opacity: 0.8; }
-        &:hover { background: #fff5f5; }
+        i {
+          opacity: 0.8;
+        }
+
+        &:hover {
+          background: #fff5f5;
+        }
       }
     }
   }
@@ -646,7 +683,9 @@ onUnmounted(() => {
     transition: background 0.2s, border-color 0.2s, color 0.2s;
     white-space: nowrap;
 
-    i { font-size: 0.8rem; }
+    i {
+      font-size: 0.8rem;
+    }
 
     &:hover {
       background: $color-accent;
@@ -732,7 +771,9 @@ onUnmounted(() => {
     transition: opacity 0.2s, transform 0.15s;
     white-space: nowrap;
 
-    i { font-size: 1rem; }
+    i {
+      font-size: 1rem;
+    }
 
     &:hover {
       opacity: 0.88;
@@ -758,7 +799,9 @@ onUnmounted(() => {
     z-index: $z-index-nav + 10;
     margin-left: auto;
 
-    @include respond-to('lg') { display: none; }
+    @include respond-to('lg') {
+      display: none;
+    }
 
     &-line {
       width: 100%;
@@ -769,13 +812,23 @@ onUnmounted(() => {
     }
   }
 
-  &--scrolled &__hamburger-line { background: $color-primary; }
+  &--scrolled &__hamburger-line {
+    background: $color-primary;
+  }
 
   &__hamburger[aria-expanded="true"] {
     .header__hamburger-line {
-      &:nth-child(1) { transform: translateY(8px) rotate(45deg); }
-      &:nth-child(2) { opacity: 0; }
-      &:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+      &:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+      }
+
+      &:nth-child(2) {
+        opacity: 0;
+      }
+
+      &:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+      }
     }
   }
 
@@ -802,7 +855,7 @@ onUnmounted(() => {
     flex-direction: column;
     overflow-y: auto;
     overscroll-behavior: contain;
-    box-shadow: -8px 0 40px rgba(0,0,0,0.25);
+    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.25);
   }
 
   &__mobile-drawer-top {
@@ -815,7 +868,10 @@ onUnmounted(() => {
   }
 
   &__mobile-drawer-logo {
-    img { height: 32px; width: auto; }
+    img {
+      height: 32px;
+      width: auto;
+    }
   }
 
   &__mobile-close {
@@ -831,7 +887,10 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     transition: background 0.15s;
-    &:hover { background: rgba($color-primary, 0.18); }
+
+    &:hover {
+      background: rgba($color-primary, 0.18);
+    }
   }
 
   // Big Tienda CTA inside drawer
@@ -850,13 +909,19 @@ onUnmounted(() => {
     transition: opacity 0.15s, transform 0.15s;
     flex-shrink: 0;
 
-    &:hover { opacity: 0.9; transform: scale(0.99); }
+    &:hover {
+      opacity: 0.9;
+      transform: scale(0.99);
+    }
 
     &-inner {
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      i { font-size: 0.95rem; }
+
+      i {
+        font-size: 0.95rem;
+      }
     }
 
     &-arrow {
@@ -887,9 +952,16 @@ onUnmounted(() => {
     text-decoration: none;
     transition: background 0.15s;
 
-    i { width: 18px; text-align: center; opacity: 0.65; font-size: 0.9rem; }
+    i {
+      width: 18px;
+      text-align: center;
+      opacity: 0.65;
+      font-size: 0.9rem;
+    }
 
-    &:hover { background: rgba($color-primary, 0.08); }
+    &:hover {
+      background: rgba($color-primary, 0.08);
+    }
   }
 
   &__mobile-sep {
@@ -927,7 +999,11 @@ onUnmounted(() => {
     font-weight: 800;
     font-family: $font-secondary;
     flex-shrink: 0;
-    i { font-size: 0.8rem; font-weight: 400; }
+
+    i {
+      font-size: 0.8rem;
+      font-weight: 400;
+    }
   }
 
   &__mobile-user-name {
@@ -951,12 +1027,24 @@ onUnmounted(() => {
     color: $color-primary;
     background: rgba($color-primary, 0.08);
     transition: background 0.15s;
-    i { width: 18px; text-align: center; opacity: 0.65; font-size: 0.9rem; }
-    &:hover { background: rgba($color-primary, 0.15); }
+
+    i {
+      width: 18px;
+      text-align: center;
+      opacity: 0.65;
+      font-size: 0.9rem;
+    }
+
+    &:hover {
+      background: rgba($color-primary, 0.15);
+    }
 
     &--admin {
       background: rgba($color-primary, 0.15);
-      &:hover { background: rgba($color-primary, 0.25); }
+
+      &:hover {
+        background: rgba($color-primary, 0.25);
+      }
     }
   }
 
@@ -973,8 +1061,17 @@ onUnmounted(() => {
     border: none;
     color: rgba($color-primary, 0.55);
     transition: background 0.15s, color 0.15s;
-    i { width: 18px; text-align: center; font-size: 0.85rem; }
-    &:hover { background: rgba($color-primary, 0.06); color: $color-primary; }
+
+    i {
+      width: 18px;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    &:hover {
+      background: rgba($color-primary, 0.06);
+      color: $color-primary;
+    }
   }
 
   &__mobile-bottom {
@@ -1001,7 +1098,10 @@ onUnmounted(() => {
     color: $color-primary;
     border: 1.5px solid rgba($color-primary, 0.2);
     transition: background 0.15s;
-    &:hover { background: rgba($color-primary, 0.22); }
+
+    &:hover {
+      background: rgba($color-primary, 0.22);
+    }
   }
 
   &__mobile-cart-badge {
@@ -1026,8 +1126,14 @@ onUnmounted(() => {
     color: #fff;
     background: #25d366;
     transition: opacity 0.15s;
-    i { font-size: 1.1rem; }
-    &:hover { opacity: 0.88; }
+
+    i {
+      font-size: 1.1rem;
+    }
+
+    &:hover {
+      opacity: 0.88;
+    }
   }
 }
 
@@ -1036,6 +1142,7 @@ onUnmounted(() => {
 .user-menu-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
+
 .user-menu-enter-from,
 .user-menu-leave-to {
   opacity: 0;
@@ -1047,6 +1154,7 @@ onUnmounted(() => {
 .mobile-backdrop-leave-active {
   transition: opacity 0.28s ease;
 }
+
 .mobile-backdrop-enter-from,
 .mobile-backdrop-leave-to {
   opacity: 0;
@@ -1057,6 +1165,7 @@ onUnmounted(() => {
 .mobile-drawer-leave-active {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .mobile-drawer-enter-from,
 .mobile-drawer-leave-to {
   transform: translateX(100%);
@@ -1066,6 +1175,7 @@ onUnmounted(() => {
 .cart-badge-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
+
 .cart-badge-enter-from,
 .cart-badge-leave-to {
   opacity: 0;

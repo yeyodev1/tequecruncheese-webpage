@@ -718,6 +718,25 @@ onBeforeUnmount(() => {
                     </div>
                   </div>
 
+                  <!-- Factura -->
+                  <div v-if="selectedOrder.quiereFactura" class="admin-drawer__info-row admin-drawer__info-row--factura">
+                    <i class="fa-solid fa-file-invoice"></i>
+                    <div>
+                      <span class="admin-drawer__info-label">
+                        Factura solicitada
+                        <span class="admin-drawer__factura-badge">SRI</span>
+                      </span>
+                      <span class="admin-drawer__info-val">{{ selectedOrder.facturaRuc }}
+                        <span class="admin-drawer__factura-type">
+                          {{ selectedOrder.facturaRuc?.length === 13 ? '· RUC' : '· Cédula' }}
+                        </span>
+                      </span>
+                      <span v-if="selectedOrder.facturaEmail" class="admin-drawer__info-sub">
+                        {{ selectedOrder.facturaEmail }}
+                      </span>
+                    </div>
+                  </div>
+
                   <div v-if="selectedOrder.deliveryAddress?.calle" class="admin-drawer__info-row">
                     <i class="fa-solid fa-location-dot"></i>
                     <div>
@@ -792,6 +811,12 @@ onBeforeUnmount(() => {
                       <td>{{ item.nombre }}</td>
                       <td class="admin__right admin-drawer__qty">× {{ item.cantidad }}</td>
                       <td class="admin__right admin-drawer__item-price">${{ (item.precio * item.cantidad).toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="selectedOrder.deliveryCost" class="admin-drawer__delivery-row">
+                      <td colspan="2">
+                        <i class="fa-solid fa-truck"></i> Envío
+                      </td>
+                      <td class="admin__right">${{ selectedOrder.deliveryCost.toFixed(2) }}</td>
                     </tr>
                     <tr class="admin-drawer__total-row">
                       <td colspan="2"><strong>Total</strong></td>
@@ -1988,6 +2013,35 @@ onBeforeUnmount(() => {
       flex-direction: column;
       gap: 1px;
     }
+
+    &--factura {
+      background: #f0fff4;
+      border: 1px solid #9ae6b4;
+      border-radius: 0.625rem;
+      padding: 0.625rem 0.75rem;
+
+      > i { color: #2f855a; }
+    }
+  }
+
+  &__factura-badge {
+    display: inline-block;
+    background: #2f855a;
+    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+  }
+
+  &__factura-type {
+    font-size: 0.75rem;
+    color: #2f855a;
+    font-weight: 600;
+    margin-left: 0.3rem;
   }
 
   &__info-label {
@@ -2096,6 +2150,14 @@ onBeforeUnmount(() => {
   &__item-price {
     font-weight: 700;
     color: $color-accent !important;
+  }
+
+  &__delivery-row td {
+    border-bottom: none;
+    color: #276749;
+    font-size: 0.82rem;
+    font-weight: 600;
+    i { margin-right: 0.3rem; font-size: 0.75rem; }
   }
 
   &__total-row td {

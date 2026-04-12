@@ -63,6 +63,9 @@ export interface CustomerInfo {
   barrio?: string
   referencia?: string
   mapsUrl?: string
+  quiereFactura?: boolean
+  facturaEmail?: string
+  facturaRuc?: string
 }
 
 // ── Payment ───────────────────────────────────────────────────────
@@ -71,6 +74,7 @@ export interface PreparePaymentPayload {
   clientTransactionId: string
   customerEmail: string
   customerInfo?: CustomerInfo
+  deliveryCost?: number
 }
 
 export interface TrackOrderResponse {
@@ -103,6 +107,10 @@ export interface AdminOrder {
   customerName?: string
   customerPhone?: string
   cedula?: string
+  quiereFactura?: boolean
+  facturaEmail?: string
+  facturaRuc?: string
+  deliveryCost?: number
   deliveryAddress?: {
     calle: string
     barrio?: string

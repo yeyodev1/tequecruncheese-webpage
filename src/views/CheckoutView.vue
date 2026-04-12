@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { paymentService } from '@/services/payment.service'
 import { productService } from '@/services/product.service'
+import { mapsService } from '@/services/maps.service'
 import ProductDetailModal from '@/components/tienda/ProductDetailModal.vue'
 import type { Product, FlavorSelection } from '@/types'
 
@@ -41,6 +42,92 @@ function onFlavorAdded() {
   pickerProduct.value = null
 }
 
+// ── Delivery distance pricing ─────────────────────────────
+const ORIGIN = { lat: -2.1647443, lng: -79.912804 } // Tequecruncheese, Guayaquil
+
+function extractCoordsFromMapsUrl(url: string): { lat: number; lng: number } | null {
+  if (!url) return null
+  // Format: @lat,lng,zoom  (most Google Maps share links)
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (atMatch) return { lat: parseFloat(atMatch[1]!), lng: parseFloat(atMatch[2]!) }
+  // Format: q=lat,lng  (direct coordinate links)
+  const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (qMatch) return { lat: parseFloat(qMatch[1]!), lng: parseFloat(qMatch[2]!) }
+  // Format: !3dlat!4dlng  (place embed links)
+  const dMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+  if (dMatch) return { lat: parseFloat(dMatch[1]!), lng: parseFloat(dMatch[2]!) }
+  return null
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const toRad = (v: number) => (v * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function getDeliveryCost(km: number): number {
+  if (km <= 1)    return 2.00
+  if (km <= 2.9)  return 2.50
+  if (km <= 4.9)  return 3.00
+  if (km <= 5.9)  return 3.50
+  if (km <= 7.9)  return 4.00
+  if (km <= 8.5)  return 4.50
+  if (km <= 9.9)  return 5.00
+  if (km <= 10.9) return 5.50
+  if (km <= 13.9) return 6.00
+  if (km <= 15.9) return 6.50
+  if (km <= 17.9) return 7.00
+  if (km <= 20.9) return 8.00
+  if (km <= 23.9) return 9.00
+  return 10.00
+}
+
+// ── Short-URL resolution (goo.gl links need a backend redirect follow) ─
+const resolvedMapsUrl  = ref<string | null>(null)
+const isResolvingUrl   = ref(false)
+
+const SHORT_URL_RE = /maps\.app\.goo\.gl/
+
+watch(
+  () => cart.customerInfo.mapsUrl,
+  async (newUrl) => {
+    resolvedMapsUrl.value = null
+    if (!newUrl || !SHORT_URL_RE.test(newUrl)) return
+    isResolvingUrl.value = true
+    try {
+      resolvedMapsUrl.value = await mapsService.resolveUrl(newUrl)
+    } catch { /* resolvedMapsUrl stays null → warn shown */ }
+    finally { isResolvingUrl.value = false }
+  },
+  { immediate: true },
+)
+
+const effectiveMapsUrl = computed(() => {
+  const raw = cart.customerInfo.mapsUrl ?? ''
+  if (SHORT_URL_RE.test(raw)) return resolvedMapsUrl.value ?? ''
+  return raw
+})
+
+const customerCoords = computed(() => extractCoordsFromMapsUrl(effectiveMapsUrl.value))
+const deliveryKm     = computed(() =>
+  customerCoords.value
+    ? haversineKm(ORIGIN.lat, ORIGIN.lng, customerCoords.value.lat, customerCoords.value.lng)
+    : null,
+)
+const deliveryCost   = computed(() => deliveryKm.value !== null ? getDeliveryCost(deliveryKm.value) : null)
+const grandTotal     = computed(() => cart.totalPrice + (deliveryCost.value ?? 0))
+
+// ── Factura state ──────────────────────────────────────────
+const quiereFactura   = ref(false)
+const facturaEmail    = ref('')
+const facturaRuc      = ref('')
+const touchedFactura  = ref({ email: false, ruc: false })
+
 // ── Touched state ──────────────────────────────────────────
 const touched = ref({
   nombre: false,
@@ -76,10 +163,15 @@ const cedulaValid   = computed(() => validarCedula(cart.customerInfo.cedula))
 const telefonoValid = computed(() => /^(09|02)\d{8}$/.test(cart.customerInfo.telefono))
 const calleValid    = computed(() => cart.customerInfo.calle.trim().length >= 5)
 
-const formValid = computed(() =>
-  emailValid.value && nombreValid.value && cedulaValid.value &&
-  telefonoValid.value && calleValid.value,
-)
+const facturaRucValid   = computed(() => /^(\d{10}|\d{13})$/.test(facturaRuc.value))
+const facturaEmailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facturaEmail.value))
+
+const formValid = computed(() => {
+  const base = emailValid.value && nombreValid.value && cedulaValid.value &&
+    telefonoValid.value && calleValid.value
+  if (!quiereFactura.value) return base
+  return base && facturaRucValid.value && facturaEmailValid.value
+})
 
 function onFieldInput(field: keyof typeof cart.customerInfo, value: string) {
   cart.setCustomerInfo({ [field]: value })
@@ -105,7 +197,15 @@ async function checkout() {
       items: cart.items,
       clientTransactionId,
       customerEmail: cart.customerInfo.email,
-      customerInfo: cart.customerInfo,
+      customerInfo: {
+        ...cart.customerInfo,
+        ...(quiereFactura.value && {
+          quiereFactura: true,
+          facturaEmail: facturaEmail.value,
+          facturaRuc: facturaRuc.value,
+        }),
+      },
+      ...(deliveryCost.value !== null && { deliveryCost: deliveryCost.value }),
     })
     window.location.href = result.payWithPayPhone
   } catch {
@@ -136,12 +236,18 @@ function orderByWhatsApp() {
     cart.customerInfo.referencia ? `Referencia: ${cart.customerInfo.referencia}` : '',
   ].filter(Boolean)
 
+  const deliveryLine = deliveryCost.value !== null
+    ? `Envío (${deliveryKm.value!.toFixed(1)} km): $${deliveryCost.value.toFixed(2)}`
+    : 'Envío: por coordinar'
+
   const message = [
     '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
     '',
     ...lines,
     '',
-    `*Total: $${cart.totalPrice.toFixed(2)}*`,
+    `Subtotal: $${cart.totalPrice.toFixed(2)}`,
+    deliveryLine,
+    `*Total: $${grandTotal.value.toFixed(2)}*`,
     '',
     '---',
     ...formInfo,
@@ -385,25 +491,121 @@ function orderByWhatsApp() {
               <div class="co-field">
                 <label class="co-field__label">
                   Link de Google Maps
-                  <span class="co-field__optional">(opcional, recomendado)</span>
+                  <span class="co-field__optional">(opcional · calcula tu envío)</span>
                 </label>
                 <div class="co-field__input">
                   <i class="fa-solid fa-map-pin"></i>
                   <input
                     type="url"
                     :value="cart.customerInfo.mapsUrl"
-                    placeholder="https://maps.google.com/?q=..."
+                    placeholder="https://maps.google.com/maps?q=..."
                     inputmode="url"
                     @input="onFieldInput('mapsUrl', ($event.target as HTMLInputElement).value)"
                   />
                 </div>
                 <span class="co-field__hint-text">
                   <i class="fa-solid fa-circle-info"></i>
-                  Comparte tu ubicación de Google Maps para una entrega más precisa
+                  Abre Google Maps, presiona tu ubicación y copia el link de "Compartir"
                 </span>
+
+                <!-- Delivery cost preview -->
+                <Transition name="co-delivery">
+                  <div v-if="cart.customerInfo.mapsUrl" class="co-delivery-preview"
+                    :class="{
+                      'co-delivery-preview--loading': isResolvingUrl,
+                      'co-delivery-preview--ok':      !isResolvingUrl && customerCoords,
+                      'co-delivery-preview--warn':    !isResolvingUrl && !customerCoords,
+                    }"
+                  >
+                    <template v-if="isResolvingUrl">
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                      <div class="co-delivery-preview__body">
+                        <strong>Calculando distancia...</strong>
+                      </div>
+                    </template>
+                    <template v-else-if="customerCoords">
+                      <i class="fa-solid fa-truck"></i>
+                      <div class="co-delivery-preview__body">
+                        <strong>${{ deliveryCost!.toFixed(2) }} de envío</strong>
+                        <span>{{ deliveryKm!.toFixed(1) }} km desde nuestra tienda</span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <i class="fa-solid fa-triangle-exclamation"></i>
+                      <div class="co-delivery-preview__body">
+                        <strong>No pudimos leer ese link</strong>
+                        <span>Verifica el link o intenta compartir tu ubicación de nuevo</span>
+                      </div>
+                    </template>
+                  </div>
+                </Transition>
               </div>
 
             </div>
+
+            <!-- Factura toggle -->
+            <div class="co-factura-toggle" @click="quiereFactura = !quiereFactura">
+              <div class="co-factura-toggle__text">
+                <i class="fa-solid fa-file-invoice"></i>
+                <div>
+                  <span class="co-factura-toggle__label">¿Necesitas factura?</span>
+                  <span class="co-factura-toggle__sub">Pediremos tu correo y RUC / cédula</span>
+                </div>
+              </div>
+              <div :class="['co-factura-toggle__switch', { 'co-factura-toggle__switch--on': quiereFactura }]">
+                <span class="co-factura-toggle__thumb"></span>
+              </div>
+            </div>
+
+            <!-- Factura fields (conditional) -->
+            <Transition name="co-factura">
+              <div v-if="quiereFactura" class="co-factura-fields">
+                <div class="co-field">
+                  <label class="co-field__label">
+                    Correo para la factura <span class="co-field__req">*</span>
+                  </label>
+                  <div :class="['co-field__input', { 'co-field__input--err': touchedFactura.email && !facturaEmailValid }]">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input
+                      v-model="facturaEmail"
+                      type="email"
+                      placeholder="factura@correo.com"
+                      autocomplete="email"
+                      @blur="touchedFactura.email = true"
+                    />
+                  </div>
+                  <span v-if="touchedFactura.email && !facturaEmailValid" class="co-field__err">
+                    Ingresa un correo válido
+                  </span>
+                </div>
+
+                <div class="co-field">
+                  <label class="co-field__label">
+                    RUC o Cédula <span class="co-field__req">*</span>
+                  </label>
+                  <div :class="['co-field__input', { 'co-field__input--err': touchedFactura.ruc && !facturaRucValid }]">
+                    <i class="fa-solid fa-id-card"></i>
+                    <input
+                      v-model="facturaRuc"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="10 dígitos (cédula) o 13 dígitos (RUC)"
+                      maxlength="13"
+                      @input="facturaRuc = (($event.target as HTMLInputElement).value).replace(/\D/g, '')"
+                      @blur="touchedFactura.ruc = true"
+                    />
+                  </div>
+                  <span v-if="touchedFactura.ruc && !facturaRucValid" class="co-field__err">
+                    Debe tener exactamente 10 dígitos (cédula) o 13 dígitos (RUC)
+                  </span>
+                  <span v-else-if="facturaRuc.length > 0 && facturaRucValid" class="co-field__ok">
+                    <i class="fa-solid fa-circle-check"></i>
+                    {{ facturaRuc.length === 13 ? 'RUC válido' : 'Cédula válida' }}
+                  </span>
+                </div>
+              </div>
+            </Transition>
+
           </section>
 
           <!-- Step 3: Payment -->
@@ -453,7 +655,7 @@ function orderByWhatsApp() {
                     <strong>Pagar con PayPhone</strong>
                     <small>Tarjeta débito / crédito</small>
                   </span>
-                  <span class="co-pay-btn__total">${{ cart.totalPrice.toFixed(2) }}</span>
+                  <span class="co-pay-btn__total">${{ grandTotal.toFixed(2) }}</span>
                 </template>
               </button>
 
@@ -517,9 +719,23 @@ function orderByWhatsApp() {
                 <span>Subtotal</span>
                 <span>${{ cart.totalPrice.toFixed(2) }}</span>
               </div>
+              <div v-if="deliveryCost !== null" class="co-summary__row co-summary__row--delivery">
+                <span>
+                  <i class="fa-solid fa-truck"></i>
+                  Envío ({{ deliveryKm!.toFixed(1) }} km)
+                </span>
+                <span>${{ deliveryCost.toFixed(2) }}</span>
+              </div>
+              <div v-else class="co-summary__row co-summary__row--delivery-pending">
+                <span>
+                  <i class="fa-solid fa-truck"></i>
+                  Envío
+                </span>
+                <span>por coordinar</span>
+              </div>
               <div class="co-summary__row co-summary__row--total">
                 <span>Total</span>
-                <strong>${{ cart.totalPrice.toFixed(2) }}</strong>
+                <strong>${{ grandTotal.toFixed(2) }}</strong>
               </div>
             </div>
 
@@ -807,6 +1023,98 @@ $bg:      #f8f6f3;
 }
 
 // ── Payment section internals ─────────────────────────────────
+// ── Factura ───────────────────────────────────────────────────────────────────
+.co-factura-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  border-radius: 0.875rem;
+  border: 1.5px solid #e2d8cc;
+  background: #fdfaf5;
+  cursor: pointer;
+  margin-top: 1.25rem;
+  user-select: none;
+  transition: border-color 0.15s;
+
+  &:hover { border-color: #b7896a; }
+
+  &__text {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    i { font-size: 1.1rem; color: #8b6343; opacity: 0.8; }
+  }
+
+  &__label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #333;
+  }
+
+  &__sub {
+    display: block;
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 0.1rem;
+  }
+
+  &__switch {
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: #ddd;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+
+    &--on { background: #2f855a; }
+  }
+
+  &__thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+
+    .co-factura-toggle__switch--on & { transform: translateX(18px); }
+  }
+}
+
+.co-factura-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.125rem;
+  background: #f7f9f7;
+  border: 1.5px solid #9ae6b4;
+  border-radius: 0.875rem;
+  margin-top: 0.75rem;
+}
+
+.co-field__ok {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2f855a;
+  margin-top: 0.3rem;
+}
+
+// Factura transition
+.co-factura-enter-active,
+.co-factura-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.co-factura-enter-from,
+.co-factura-leave-to { opacity: 0; transform: translateY(-6px); }
+
 .co-error {
   background: #fff5f5;
   border: 1px solid rgba(229,62,62,0.3);
@@ -943,6 +1251,53 @@ $bg:      #f8f6f3;
   i { color: #38a169; font-size: 0.78rem; }
 }
 
+// ── Delivery cost preview (below mapsUrl field) ───────────────
+.co-delivery-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+
+  > i { font-size: 0.9rem; flex-shrink: 0; margin-top: 0.1rem; }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    strong { font-weight: 800; line-height: 1.2; }
+    span   { font-size: 0.75rem; opacity: 0.75; }
+  }
+
+  &--loading {
+    background: #f7f8ff;
+    border: 1.5px solid #bee3f8;
+    color: #2b6cb0;
+    > i { color: #3182ce; }
+  }
+
+  &--ok {
+    background: #f0fff4;
+    border: 1.5px solid #9ae6b4;
+    color: #276749;
+    > i { color: #38a169; }
+  }
+
+  &--warn {
+    background: #fffbeb;
+    border: 1.5px solid #fbd38d;
+    color: #92400e;
+    > i { color: #dd6b20; }
+  }
+}
+
+.co-delivery-enter-active,
+.co-delivery-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.co-delivery-enter-from,
+.co-delivery-leave-to { opacity: 0; transform: translateY(-4px); }
+
 // ── Summary sidebar ───────────────────────────────────────────
 .co-summary {
   @media (min-width: 900px) {
@@ -1061,6 +1416,22 @@ $bg:      #f8f6f3;
     font-size: 0.82rem;
     color: #888;
     font-weight: 500;
+
+    i { font-size: 0.7rem; margin-right: 0.2rem; }
+
+    &--delivery {
+      color: #276749;
+      font-weight: 600;
+      background: #f0fff4;
+      padding: 0.3rem 0.5rem;
+      border-radius: 0.5rem;
+      margin: 0 -0.5rem;
+    }
+
+    &--delivery-pending {
+      font-style: italic;
+      color: #bbb;
+    }
 
     &--total {
       padding-top: 0.625rem;

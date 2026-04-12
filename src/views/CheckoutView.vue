@@ -50,6 +50,9 @@ function extractCoordsFromMapsUrl(url: string): { lat: number; lng: number } | n
   // Format: @lat,lng,zoom  (most Google Maps share links)
   const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
   if (atMatch) return { lat: parseFloat(atMatch[1]!), lng: parseFloat(atMatch[2]!) }
+  // Format: /maps/search/lat,+lng  (resolved goo.gl short links)
+  const searchMatch = url.match(/\/maps\/search\/(-?\d+\.\d+),\+?(-?\d+\.\d+)/)
+  if (searchMatch) return { lat: parseFloat(searchMatch[1]!), lng: parseFloat(searchMatch[2]!) }
   // Format: q=lat,lng  (direct coordinate links)
   const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
   if (qMatch) return { lat: parseFloat(qMatch[1]!), lng: parseFloat(qMatch[2]!) }

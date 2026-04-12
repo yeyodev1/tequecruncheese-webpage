@@ -40,7 +40,11 @@ async function handleSubmit() {
   <div class="reset-view">
     <div class="reset-view__card">
       <div class="reset-view__brand">
-        <span class="reset-view__logo">🧀</span>
+        <img
+          class="reset-view__logo"
+          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+          alt="TequeCruncheese"
+        />
         <h1 class="reset-view__title">Nueva contraseña</h1>
         <p class="reset-view__subtitle">Elige una contraseña segura</p>
       </div>
@@ -121,8 +125,10 @@ async function handleSubmit() {
   }
 
   &__logo {
-    font-size: 2.5rem;
+    height: 52px;
+    width: auto;
     display: block;
+    margin: 0 auto 0.25rem;
   }
 
   &__title {

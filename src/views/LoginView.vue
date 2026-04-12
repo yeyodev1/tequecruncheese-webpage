@@ -35,7 +35,11 @@ async function handleLogin() {
   <div class="login-view">
     <div class="login-view__card">
       <div class="login-view__brand">
-        <span class="login-view__logo">🧀</span>
+        <img
+          class="login-view__logo"
+          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+          alt="TequeCruncheese"
+        />
         <h1 class="login-view__title">Tequecruncheese</h1>
         <p class="login-view__subtitle">Mi cuenta</p>
       </div>
@@ -118,8 +122,10 @@ async function handleLogin() {
   }
 
   &__logo {
-    font-size: 2.5rem;
+    height: 52px;
+    width: auto;
     display: block;
+    margin: 0 auto 0.25rem;
   }
 
   &__title {

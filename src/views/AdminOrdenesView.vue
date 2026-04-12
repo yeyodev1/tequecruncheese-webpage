@@ -138,7 +138,11 @@ onMounted(loadOrders)
     <!-- Header -->
     <header class="admin__header">
       <div class="admin__header-left">
-        <span class="admin__logo">🧀</span>
+        <img
+          class="admin__logo"
+          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+          alt="TequeCruncheese"
+        />
         <div>
           <h1>Panel de Administración</h1>
           <p>Tequecruncheese</p>
@@ -384,7 +388,11 @@ onMounted(loadOrders)
     gap: 0.75rem;
   }
 
-  &__logo { font-size: 1.75rem; }
+  &__logo {
+    height: 36px;
+    width: auto;
+    flex-shrink: 0;
+  }
 
   &__header-left h1 {
     margin: 0;

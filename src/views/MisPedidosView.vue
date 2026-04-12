@@ -97,7 +97,11 @@ onMounted(() => {
     <header class="mis-pedidos__header">
       <div class="mis-pedidos__header-inner">
         <div class="mis-pedidos__brand">
-          <span>🧀</span>
+          <img
+            src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+            alt="TequeCruncheese"
+            class="mis-pedidos__brand-logo"
+          />
           <span class="mis-pedidos__brand-name">Tequecruncheese</span>
         </div>
         <div class="mis-pedidos__header-actions">
@@ -306,8 +310,13 @@ onMounted(() => {
   &__brand {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1.5rem;
+    gap: 0.625rem;
+  }
+
+  &__brand-logo {
+    height: 32px;
+    width: auto;
+    flex-shrink: 0;
   }
 
   &__brand-name {

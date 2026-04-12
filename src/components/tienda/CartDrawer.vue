@@ -69,13 +69,13 @@ function orderByWhatsApp() {
     (item) => `• ${item.cantidad}x ${item.nombre} — $${(item.precio * item.cantidad).toFixed(2)}`,
   )
   const message = [
-    '¡Hola Tequecruncheese! 🧀 Quisiera hacer el siguiente pedido:',
+    '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
     '',
     ...lines,
     '',
     `*Total: $${cart.totalPrice.toFixed(2)}*`,
     '',
-    '¡Gracias! 😊',
+    '¡Gracias!',
   ].join('\n')
 
   const url = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`

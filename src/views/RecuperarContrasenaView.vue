@@ -31,7 +31,11 @@ async function handleSubmit() {
   <div class="recuperar-view">
     <div class="recuperar-view__card">
       <div class="recuperar-view__brand">
-        <span class="recuperar-view__logo">🧀</span>
+        <img
+          class="recuperar-view__logo"
+          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+          alt="TequeCruncheese"
+        />
         <h1 class="recuperar-view__title">Recuperar contraseña</h1>
         <p class="recuperar-view__subtitle">Te enviamos un enlace a tu correo</p>
       </div>
@@ -98,8 +102,10 @@ async function handleSubmit() {
   }
 
   &__logo {
-    font-size: 2.5rem;
+    height: 52px;
+    width: auto;
     display: block;
+    margin: 0 auto 0.25rem;
   }
 
   &__title {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import TheHeader from '@/components/home/TheHeader.vue'
 import TheFooter from '@/components/home/TheFooter.vue'
 import ProductCard from '@/components/tienda/ProductCard.vue'
@@ -10,11 +10,19 @@ import type { Product } from '@/types'
 
 const cart = useCartStore()
 const products = ref<Product[]>([])
+const categories = ref<string[]>([])
+const activeCategory = ref<string | null>(null)
 const loading = ref(true)
 const error = ref('')
 
 const selectedProduct = ref<Product | null>(null)
 const showDetail = ref(false)
+
+const filteredProducts = computed(() =>
+  activeCategory.value
+    ? products.value.filter(p => p.categoria === activeCategory.value)
+    : products.value
+)
 
 function openDetail(product: Product) {
   selectedProduct.value = product
@@ -30,7 +38,12 @@ async function loadProducts() {
   loading.value = true
   error.value = ''
   try {
-    products.value = await productService.list()
+    const [prods, cats] = await Promise.all([
+      productService.list(),
+      productService.listCategories(),
+    ])
+    products.value = prods
+    categories.value = cats
   } catch {
     error.value = 'No se pudieron cargar los productos. Intenta de nuevo.'
   } finally {
@@ -67,8 +80,8 @@ onMounted(loadProducts)
         <div class="tienda__catalog-head">
           <div class="tienda__catalog-title">
             <h2>Catálogo</h2>
-            <span v-if="!loading && products.length > 0" class="tienda__catalog-count">
-              {{ products.length }} productos
+            <span v-if="!loading && filteredProducts.length > 0" class="tienda__catalog-count">
+              {{ filteredProducts.length }} producto{{ filteredProducts.length !== 1 ? 's' : '' }}
             </span>
           </div>
 
@@ -80,6 +93,26 @@ onMounted(loadProducts)
             <i class="fa-solid fa-cart-shopping"></i>
             <span>Ver carrito</span>
             <span class="tienda__cart-trigger-badge">{{ cart.totalItems }}</span>
+          </button>
+        </div>
+
+        <!-- Category filter bar -->
+        <div v-if="!loading && !error && categories.length > 0" class="tienda__filters">
+          <button
+            class="tienda__filter-chip"
+            :class="{ 'tienda__filter-chip--active': activeCategory === null }"
+            @click="activeCategory = null"
+          >
+            <i class="fa-solid fa-grid-2"></i> Todos
+          </button>
+          <button
+            v-for="cat in categories"
+            :key="cat"
+            class="tienda__filter-chip"
+            :class="{ 'tienda__filter-chip--active': activeCategory === cat }"
+            @click="activeCategory = cat"
+          >
+            {{ cat }}
           </button>
         </div>
 
@@ -104,17 +137,21 @@ onMounted(loadProducts)
         </div>
 
         <!-- Empty -->
-        <div v-else-if="products.length === 0" class="tienda__state">
+        <div v-else-if="filteredProducts.length === 0" class="tienda__state">
           <div class="tienda__state-icon">
             <i class="fa-regular fa-face-meh"></i>
           </div>
-          <p>No hay productos disponibles por el momento.</p>
+          <p v-if="activeCategory">No hay productos en "{{ activeCategory }}".</p>
+          <p v-else>No hay productos disponibles por el momento.</p>
+          <button v-if="activeCategory" class="tienda__retry-btn" @click="activeCategory = null">
+            <i class="fa-solid fa-xmark"></i> Quitar filtro
+          </button>
         </div>
 
         <!-- Product grid -->
         <div v-else class="tienda__grid">
           <ProductCard
-            v-for="product in products"
+            v-for="product in filteredProducts"
             :key="product.slug"
             :product="product"
             @select-product="openDetail"
@@ -346,6 +383,43 @@ onMounted(loadProducts)
     transition: opacity 0.15s;
 
     &:hover { opacity: 0.85; }
+  }
+
+  // ── Category filters ──────────────────────────────────────────
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  &__filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1.5px solid #e2d8cc;
+    background: #fff;
+    color: #666;
+    transition: all 0.15s;
+
+    i { font-size: 0.72rem; }
+
+    &:hover {
+      border-color: $color-accent;
+      color: $color-accent;
+    }
+
+    &--active {
+      background: $color-accent;
+      border-color: $color-accent;
+      color: #fff;
+    }
   }
 
   // ── Product grid ──────────────────────────────────────────────

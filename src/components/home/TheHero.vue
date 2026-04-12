@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import { cloudImg } from '@/services/cloudinary'
 
 const waBase = 'https://wa.me/593963237880?text='
@@ -57,10 +58,12 @@ const col2 = [
           Tequeños artesanales hechos a mano. Perfectamente dorados, increíblemente quesudos, locamente adictivos. El alma de toda buena fiesta.
         </p>
         <div class="hero__actions">
-          <a :href="waPedido" target="_blank" rel="noopener" class="hero__btn-primary">
-            <i class="fa-brands fa-whatsapp"></i> Prueba el Crunch
+          <RouterLink to="/tienda" class="hero__btn-primary">
+            <i class="fa-solid fa-bag-shopping"></i> Pedir ahora
+          </RouterLink>
+          <a :href="waPedido" target="_blank" rel="noopener" class="hero__btn-outline">
+            <i class="fa-brands fa-whatsapp"></i> WhatsApp
           </a>
-          <a href="#menu" class="hero__btn-outline">Ver Menú</a>
         </div>
         <div class="hero__social">
           <a :href="waPedido" target="_blank" rel="noopener" class="hero__social-icon" aria-label="WhatsApp">

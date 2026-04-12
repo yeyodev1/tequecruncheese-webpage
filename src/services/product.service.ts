@@ -23,6 +23,11 @@ class ProductService extends APIBase {
     return res.data
   }
 
+  async listCategories(): Promise<string[]> {
+    const res = await this.get<{ _id: string; name: string }[]>('categories')
+    return res.data.map(c => c.name)
+  }
+
   async getBySlug(slug: string): Promise<Product> {
     const res = await this.get<Product>(`products/${slug}`)
     return res.data

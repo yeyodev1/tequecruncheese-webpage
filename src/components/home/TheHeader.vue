@@ -17,6 +17,8 @@ const waPedido = 'https://wa.me/593963237880?text=' + encodeURIComponent(
 )
 
 const isScrolled = ref(false)
+const isHidden   = ref(false)
+let lastScrollY  = 0
 const isMobileMenuOpen = ref(false)
 const isUserMenuOpen = ref(false)
 
@@ -51,13 +53,27 @@ const displayName = computed(() => {
 
 // ── Scroll ────────────────────────────────────────────────────
 const handleScroll = () => {
-  isScrolled.value = window.scrollY > 60
+  const y = window.scrollY
+  isScrolled.value = y > 60
+
+  // Hide on scroll down, reveal on scroll up — but never while menu is open
+  if (!isMobileMenuOpen.value) {
+    if (y > lastScrollY && y > 120) {
+      isHidden.value = true
+    } else {
+      isHidden.value = false
+    }
+  }
+  lastScrollY = y
 }
 
 // ── Navigation ────────────────────────────────────────────────
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
-  if (isMobileMenuOpen.value) isUserMenuOpen.value = false
+  if (isMobileMenuOpen.value) {
+    isUserMenuOpen.value = false
+    isHidden.value = false   // always show header when opening menu
+  }
 }
 
 const closeMobileMenu = () => {
@@ -130,7 +146,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header :class="['header', { 'header--scrolled': isScrolled }]">
+  <header :class="['header', { 'header--scrolled': isScrolled, 'header--hidden': isHidden }]">
     <div class="header__container">
 
       <!-- Logo -->
@@ -146,7 +162,9 @@ onUnmounted(() => {
         <a href="#sabores"   class="header__link" @click="scrollToSection($event, 'sabores')">Sabores</a>
         <a href="#combos"    class="header__link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
         <a href="#congelados" class="header__link" @click="scrollToSection($event, 'congelados')">Congelados</a>
-        <RouterLink to="/tienda" class="header__link">Tienda</RouterLink>
+        <RouterLink to="/tienda" class="header__link header__link--tienda">
+          <i class="fa-solid fa-bag-shopping"></i> Tienda
+        </RouterLink>
       </nav>
 
       <!-- Desktop Actions -->
@@ -225,65 +243,95 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- Mobile menu overlay -->
-    <Transition name="mobile-menu">
-      <div v-if="isMobileMenuOpen" class="header__mobile" @click.self="closeMobileMenu">
-        <nav class="header__mobile-nav">
+    <!-- Mobile menu: backdrop + drawer -->
+    <Transition name="mobile-backdrop">
+      <div v-if="isMobileMenuOpen" class="header__mobile-backdrop" @click="closeMobileMenu" />
+    </Transition>
+    <Transition name="mobile-drawer">
+      <div v-if="isMobileMenuOpen" class="header__mobile-drawer">
 
-          <!-- User section at top -->
-          <div v-if="isAdmin" class="header__mobile-user-section">
-            <span class="header__mobile-role-badge">
-              <i class="fa-solid fa-shield-halved"></i> Admin
-            </span>
-          </div>
-          <div v-else-if="isLoggedIn" class="header__mobile-user-section">
-            <span class="header__mobile-avatar">
-              <template v-if="userInitials">{{ userInitials }}</template>
-              <i v-else class="fa-solid fa-user"></i>
-            </span>
-            <span class="header__mobile-user-name">{{ displayName }}</span>
-          </div>
-
-          <div class="header__mobile-divider" v-if="isAdmin || isLoggedIn"></div>
-
-          <a href="#sabores"    class="header__mobile-link" @click="scrollToSection($event, 'sabores')">Sabores</a>
-          <a href="#combos"     class="header__mobile-link" @click="scrollToSection($event, 'combos')">Cajas y Combos</a>
-          <a href="#congelados" class="header__mobile-link" @click="scrollToSection($event, 'congelados')">Congelados</a>
-          <RouterLink to="/tienda"      class="header__mobile-link" @click="closeMobileMenu">Tienda</RouterLink>
-
-          <div class="header__mobile-divider"></div>
-
-          <!-- Role-based mobile CTA -->
-          <RouterLink v-if="isAdmin" to="/admin/dashboard" class="header__mobile-admin-btn" @click="closeMobileMenu">
-            <i class="fa-solid fa-shield-halved"></i> Panel Admin
+        <!-- Drawer top: logo + close -->
+        <div class="header__mobile-drawer-top">
+          <RouterLink to="/" class="header__mobile-drawer-logo" @click="closeMobileMenu">
+            <img
+              src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
+              alt="TequeCruncheese"
+            />
           </RouterLink>
+          <button class="header__mobile-close" @click="closeMobileMenu" aria-label="Cerrar menú">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Big Tienda CTA -->
+        <RouterLink to="/tienda" class="header__mobile-cta-tienda" @click="closeMobileMenu">
+          <span class="header__mobile-cta-tienda-inner">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span>Ver Tienda Online</span>
+          </span>
+          <i class="fa-solid fa-arrow-right header__mobile-cta-tienda-arrow"></i>
+        </RouterLink>
+
+        <!-- Nav links -->
+        <nav class="header__mobile-nav">
+          <a href="#sabores"    class="header__mobile-link" @click="scrollToSection($event, 'sabores')">
+            <i class="fa-solid fa-star"></i> Sabores
+          </a>
+          <a href="#combos"     class="header__mobile-link" @click="scrollToSection($event, 'combos')">
+            <i class="fa-solid fa-box-open"></i> Cajas y Combos
+          </a>
+          <a href="#congelados" class="header__mobile-link" @click="scrollToSection($event, 'congelados')">
+            <i class="fa-solid fa-snowflake"></i> Congelados
+          </a>
+        </nav>
+
+        <div class="header__mobile-sep"></div>
+
+        <!-- Account section -->
+        <div class="header__mobile-account">
+          <template v-if="isAdmin">
+            <RouterLink to="/admin/dashboard" class="header__mobile-account-btn header__mobile-account-btn--admin" @click="closeMobileMenu">
+              <i class="fa-solid fa-shield-halved"></i> Panel Admin
+            </RouterLink>
+          </template>
           <template v-else-if="isLoggedIn">
+            <div class="header__mobile-user-row">
+              <span class="header__mobile-avatar">
+                <template v-if="userInitials">{{ userInitials }}</template>
+                <i v-else class="fa-solid fa-user"></i>
+              </span>
+              <span class="header__mobile-user-name">{{ displayName }}</span>
+            </div>
             <RouterLink to="/mis-pedidos" class="header__mobile-link" @click="closeMobileMenu">
-              <i class="fa-solid fa-bag-shopping" style="margin-right:0.4rem;opacity:0.7;"></i>
-              Mis pedidos
+              <i class="fa-solid fa-bag-shopping"></i> Mis pedidos
             </RouterLink>
             <button class="header__mobile-logout" @click="handleLogout">
               <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
             </button>
           </template>
-          <RouterLink v-else to="/login" class="header__mobile-login-btn" @click="closeMobileMenu">
-            <i class="fa-regular fa-user"></i> Iniciar sesión
-          </RouterLink>
+          <template v-else>
+            <RouterLink to="/login" class="header__mobile-account-btn" @click="closeMobileMenu">
+              <i class="fa-regular fa-user"></i> Iniciar sesión
+            </RouterLink>
+          </template>
+        </div>
 
+        <!-- Bottom CTAs -->
+        <div class="header__mobile-bottom">
           <button
             v-if="cart.totalItems > 0"
-            class="header__mobile-cart"
+            class="header__mobile-cart-btn"
             @click="() => { closeMobileMenu(); cart.openCart() }"
           >
-            <i class="fa-solid fa-bag-shopping"></i>
+            <i class="fa-solid fa-cart-shopping"></i>
             Ver carrito
             <span class="header__mobile-cart-badge">{{ cart.totalItems }}</span>
           </button>
-
           <a :href="waPedido" target="_blank" rel="noopener" class="header__mobile-wa" @click="closeMobileMenu">
-            <i class="fa-brands fa-whatsapp"></i> Pide ahora
+            <i class="fa-brands fa-whatsapp"></i> Pedir por WhatsApp
           </a>
-        </nav>
+        </div>
+
       </div>
     </Transition>
   </header>
@@ -298,9 +346,13 @@ onUnmounted(() => {
   width: 100%;
   z-index: $z-index-nav;
   transition: background 0.35s ease, padding 0.35s ease, box-shadow 0.35s ease,
-              backdrop-filter 0.35s ease;
+              backdrop-filter 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   padding: $spacing-md 0;
   background: transparent;
+
+  &--hidden {
+    transform: translateY(-110%);
+  }
 
   &--scrolled {
     background: rgba($color-accent, 0.96);
@@ -357,11 +409,39 @@ onUnmounted(() => {
     white-space: nowrap;
 
     &:hover { color: $color-secondary; }
+
+    &--tienda {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      background: $color-primary;
+      color: $color-accent !important;
+      font-weight: 800;
+      font-size: 0.85rem;
+      border: 2px solid transparent;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+
+      i { font-size: 0.78rem; }
+
+      &:hover {
+        background: darken(#FED47F, 8%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(#FED47F, 0.4);
+      }
+    }
   }
 
   &--scrolled &__link {
     color: rgba($color-primary, 0.85);
     &:hover { color: $color-primary; }
+
+    &--tienda {
+      background: $color-accent;
+      color: $color-primary !important;
+      &:hover { background: lighten(#572612, 8%); }
+    }
   }
 
   // ── Desktop actions ──────────────────────────────────────────
@@ -699,200 +779,255 @@ onUnmounted(() => {
     }
   }
 
-  // ── Mobile overlay ───────────────────────────────────────────
-  &__mobile {
+  // ── Mobile backdrop ──────────────────────────────────────────
+  &__mobile-backdrop {
     position: fixed;
     inset: 0;
+    z-index: $z-index-nav - 2;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  // ── Mobile drawer (slides from right) ────────────────────────
+  &__mobile-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
     z-index: $z-index-nav - 1;
-    background: rgba($color-accent, 0.97);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    width: min(360px, 88vw);
+    background: $color-accent;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.25);
+  }
+
+  &__mobile-drawer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba($color-primary, 0.1);
+    flex-shrink: 0;
+  }
+
+  &__mobile-drawer-logo {
+    img { height: 32px; width: auto; }
+  }
+
+  &__mobile-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid rgba($color-primary, 0.2);
+    background: rgba($color-primary, 0.08);
+    color: $color-primary;
+    font-size: 1rem;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.15s;
+    &:hover { background: rgba($color-primary, 0.18); }
   }
 
+  // Big Tienda CTA inside drawer
+  &__mobile-cta-tienda {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 1.25rem 1.25rem 0;
+    padding: 1rem 1.25rem;
+    background: $color-primary;
+    color: $color-accent;
+    border-radius: 1rem;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 1rem;
+    transition: opacity 0.15s, transform 0.15s;
+    flex-shrink: 0;
+
+    &:hover { opacity: 0.9; transform: scale(0.99); }
+
+    &-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      i { font-size: 0.95rem; }
+    }
+
+    &-arrow {
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+  }
+
+  // Nav links inside drawer
   &__mobile-nav {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 2rem;
-    width: 100%;
-    max-width: 320px;
+    padding: 1rem 1.25rem 0;
+    gap: 0.125rem;
+    flex-shrink: 0;
   }
 
-  &__mobile-user-section {
+  &__mobile-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-family: $font-secondary;
+    font-size: 1rem;
+    font-weight: 700;
+    color: $color-primary;
+    text-decoration: none;
+    transition: background 0.15s;
+
+    i { width: 18px; text-align: center; opacity: 0.65; font-size: 0.9rem; }
+
+    &:hover { background: rgba($color-primary, 0.08); }
+  }
+
+  &__mobile-sep {
+    height: 1px;
+    background: rgba($color-primary, 0.12);
+    margin: 1rem 1.25rem;
+    flex-shrink: 0;
+  }
+
+  &__mobile-account {
     display: flex;
     flex-direction: column;
+    gap: 0.25rem;
+    padding: 0 1.25rem;
+    flex-shrink: 0;
+  }
+
+  &__mobile-user-row {
+    display: flex;
     align-items: center;
-    gap: 0.375rem;
-    padding-bottom: 0.5rem;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem 0.75rem;
   }
 
   &__mobile-avatar {
-    width: 52px;
-    height: 52px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: $color-primary;
     color: $color-accent;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
     font-weight: 800;
     font-family: $font-secondary;
-
-    i { font-size: 1rem; font-weight: 400; }
+    flex-shrink: 0;
+    i { font-size: 0.8rem; font-weight: 400; }
   }
 
   &__mobile-user-name {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 700;
     color: $color-primary;
-    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  &__mobile-role-badge {
-    display: inline-flex;
+  &__mobile-account-btn {
+    display: flex;
     align-items: center;
-    gap: 0.4rem;
-    background: rgba($color-primary, 0.15);
-    color: $color-primary;
-    border: 1px solid rgba($color-primary, 0.3);
-    border-radius: 999px;
-    padding: 0.4rem 1rem;
-    font-size: 0.85rem;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 1rem;
     font-weight: 700;
-  }
-
-  &__mobile-divider {
-    width: 40px;
-    height: 1px;
-    background: rgba($color-primary, 0.15);
-    border-radius: 999px;
-  }
-
-  &__mobile-link {
-    font-family: $font-secondary;
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: $color-primary;
     text-decoration: none;
-    opacity: 0.9;
-    transition: opacity 0.15s, transform 0.15s;
+    color: $color-primary;
+    background: rgba($color-primary, 0.08);
+    transition: background 0.15s;
+    i { width: 18px; text-align: center; opacity: 0.65; font-size: 0.9rem; }
+    &:hover { background: rgba($color-primary, 0.15); }
 
-    &:hover {
-      opacity: 1;
-      transform: translateY(-2px);
+    &--admin {
+      background: rgba($color-primary, 0.15);
+      &:hover { background: rgba($color-primary, 0.25); }
     }
-  }
-
-  &__mobile-login-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.5rem;
-    border-radius: 999px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    text-decoration: none;
-    color: $color-accent;
-    background: $color-primary;
-    transition: opacity 0.15s;
-
-    &:hover { opacity: 0.88; }
   }
 
   &__mobile-logout {
-    background: none;
-    border: 1px solid rgba($color-primary, 0.25);
-    border-radius: 999px;
-    color: rgba($color-primary, 0.6);
-    padding: 0.5rem 1.25rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    transition: border-color 0.15s, color 0.15s;
-
-    &:hover {
-      border-color: rgba($color-primary, 0.5);
-      color: $color-primary;
-    }
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: rgba($color-primary, 0.55);
+    transition: background 0.15s, color 0.15s;
+    i { width: 18px; text-align: center; font-size: 0.85rem; }
+    &:hover { background: rgba($color-primary, 0.06); color: $color-primary; }
   }
 
-  &__mobile-admin-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.5rem;
-    border-radius: 999px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    text-decoration: none;
-    color: $color-accent;
-    background: $color-primary;
-    transition: opacity 0.15s;
-
-    &:hover { opacity: 0.88; }
+  &__mobile-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    margin-top: auto;
+    flex-shrink: 0;
+    border-top: 1px solid rgba($color-primary, 0.1);
   }
 
-  &__mobile-cart {
-    display: inline-flex;
+  &__mobile-cart-btn {
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.65rem 1.25rem;
-    border-radius: 999px;
+    padding: 0.875rem;
+    border-radius: 0.875rem;
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
-    background: rgba($color-primary, 0.15);
+    background: rgba($color-primary, 0.12);
     color: $color-primary;
-    border: 1px solid rgba($color-primary, 0.25);
+    border: 1.5px solid rgba($color-primary, 0.2);
     transition: background 0.15s;
-
-    &:hover { background: rgba($color-primary, 0.25); }
+    &:hover { background: rgba($color-primary, 0.22); }
   }
 
   &__mobile-cart-badge {
     background: $color-primary;
     color: $color-accent;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: 999px;
+    padding: 1px 7px;
     font-size: 0.68rem;
     font-weight: 900;
   }
 
   &__mobile-wa {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.65rem 1.5rem;
-    border-radius: 999px;
+    padding: 0.875rem;
+    border-radius: 0.875rem;
     font-size: 0.95rem;
     font-weight: 700;
     text-decoration: none;
-    color: #128c3e;
-    background: rgba(37, 211, 102, 0.12);
-    border: 1.5px solid rgba(37, 211, 102, 0.3);
-    transition: background 0.15s, border-color 0.15s;
-
+    color: #fff;
+    background: #25d366;
+    transition: opacity 0.15s;
     i { font-size: 1.1rem; }
-
-    &:hover {
-      background: rgba(37, 211, 102, 0.22);
-      border-color: rgba(37, 211, 102, 0.5);
-    }
+    &:hover { opacity: 0.88; }
   }
 }
 
@@ -907,13 +1042,24 @@ onUnmounted(() => {
   transform: translateY(-6px) scale(0.97);
 }
 
-.mobile-menu-enter-active,
-.mobile-menu-leave-active {
-  transition: opacity 0.3s ease;
+// Backdrop fade
+.mobile-backdrop-enter-active,
+.mobile-backdrop-leave-active {
+  transition: opacity 0.28s ease;
 }
-.mobile-menu-enter-from,
-.mobile-menu-leave-to {
+.mobile-backdrop-enter-from,
+.mobile-backdrop-leave-to {
   opacity: 0;
+}
+
+// Drawer slide from right
+.mobile-drawer-enter-active,
+.mobile-drawer-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mobile-drawer-enter-from,
+.mobile-drawer-leave-to {
+  transform: translateX(100%);
 }
 
 .cart-badge-enter-active,

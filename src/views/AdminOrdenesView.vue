@@ -909,6 +909,122 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- PRINT RECEIPT — hidden on screen, shown only on @print   -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <div v-if="selectedOrder" class="print-receipt">
+
+      <div class="pr__header">
+        <h1>Tequecruncheese</h1>
+        <p>tequecruncheese.com</p>
+      </div>
+
+      <div class="pr__rule"></div>
+
+      <div class="pr__meta">
+        <div class="pr__meta-row">
+          <span>Pedido</span>
+          <span class="pr__mono">#{{ selectedOrder.trackingToken }}</span>
+        </div>
+        <div class="pr__meta-row">
+          <span>Fecha</span>
+          <span>{{ formatDate(selectedOrder.createdAt) }}</span>
+        </div>
+        <div class="pr__meta-row">
+          <span>Estado</span>
+          <span><strong>{{ STATUS_CONFIG[selectedOrder.status]?.label ?? selectedOrder.status }}</strong></span>
+        </div>
+      </div>
+
+      <div class="pr__rule"></div>
+
+      <div class="pr__section">
+        <h2>Cliente</h2>
+        <div v-if="selectedOrder.customerName" class="pr__row">
+          <span>Nombre</span><span>{{ selectedOrder.customerName }}</span>
+        </div>
+        <div v-if="selectedOrder.customerPhone" class="pr__row">
+          <span>Teléfono</span><span>{{ selectedOrder.customerPhone }}</span>
+        </div>
+        <div v-if="selectedOrder.cedula" class="pr__row">
+          <span>Cédula</span><span>{{ selectedOrder.cedula }}</span>
+        </div>
+        <div v-if="selectedOrder.customerEmail" class="pr__row">
+          <span>Email</span><span>{{ selectedOrder.customerEmail }}</span>
+        </div>
+      </div>
+
+      <template v-if="selectedOrder.deliveryAddress?.calle">
+        <div class="pr__rule"></div>
+        <div class="pr__section">
+          <h2>Dirección de entrega</h2>
+          <div class="pr__row">
+            <span>Calle</span><span>{{ selectedOrder.deliveryAddress.calle }}</span>
+          </div>
+          <div v-if="selectedOrder.deliveryAddress.barrio" class="pr__row">
+            <span>Barrio</span><span>{{ selectedOrder.deliveryAddress.barrio }}</span>
+          </div>
+          <div v-if="selectedOrder.deliveryAddress.referencia" class="pr__row">
+            <span>Referencia</span><span>{{ selectedOrder.deliveryAddress.referencia }}</span>
+          </div>
+        </div>
+      </template>
+
+      <div class="pr__rule"></div>
+
+      <div class="pr__section">
+        <h2>Productos</h2>
+        <table class="pr__table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="pr__right">Cant.</th>
+              <th class="pr__right">Precio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in selectedOrder.items" :key="item.slug">
+              <td>{{ item.nombre }}</td>
+              <td class="pr__right">× {{ item.cantidad }}</td>
+              <td class="pr__right">${{ (item.precio * item.cantidad).toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pr__totals">
+          <div class="pr__total-row">
+            <span>Subtotal</span>
+            <span>${{ (selectedOrder.total - (selectedOrder.deliveryCost ?? 0)).toFixed(2) }}</span>
+          </div>
+          <div v-if="selectedOrder.deliveryCost" class="pr__total-row">
+            <span>Envío</span>
+            <span>${{ selectedOrder.deliveryCost.toFixed(2) }}</span>
+          </div>
+          <div class="pr__total-row pr__total-row--grand">
+            <span>TOTAL</span>
+            <strong>${{ selectedOrder.total.toFixed(2) }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="selectedOrder.quiereFactura">
+        <div class="pr__rule"></div>
+        <div class="pr__section">
+          <h2>Datos de facturación</h2>
+          <div class="pr__row"><span>RUC / Cédula</span><span>{{ selectedOrder.facturaRuc }}</span></div>
+          <div v-if="selectedOrder.facturaEmail" class="pr__row"><span>Email factura</span><span>{{ selectedOrder.facturaEmail }}</span></div>
+        </div>
+      </template>
+
+      <div class="pr__rule"></div>
+      <div class="pr__footer">
+        <p>¡Gracias por tu pedido!</p>
+        <p class="pr__mono">tequecruncheese.com</p>
+      </div>
+
+    </div><!-- /print-receipt -->
+
   </div>
 </template>
 
@@ -2308,40 +2424,127 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: translateY(-6px);
 }
+
+// ── Print receipt (hidden on screen) ──────────────────────────
+.print-receipt { display: none; }
 </style>
 
 <style>
+/* ── Receipt styles (only for print) ───────────────────────── */
 @media print {
-  /* Hide everything except the order drawer */
+  /* Hide the entire app, show only the receipt */
   body * { visibility: hidden !important; }
+  .print-receipt,
+  .print-receipt * { visibility: visible !important; }
 
-  .admin-drawer,
-  .admin-drawer * { visibility: visible !important; }
-
-  .admin-drawer {
+  .print-receipt {
+    display: block !important;
     position: fixed !important;
     inset: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    transform: none !important;
-    z-index: 9999 !important;
+    padding: 2cm 2.5cm !important;
+    background: #fff !important;
+    font-family: 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 11pt !important;
+    color: #111 !important;
+    line-height: 1.5 !important;
   }
 
-  .admin-drawer__body {
-    overflow: visible !important;
-    max-height: none !important;
+  .pr__header {
+    text-align: center;
+    margin-bottom: 0.6cm;
+  }
+  .pr__header h1 {
+    font-size: 18pt;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    margin: 0 0 2px;
+  }
+  .pr__header p {
+    font-size: 9pt;
+    color: #888;
+    margin: 0;
   }
 
-  /* Hide interactive controls */
-  .admin-drawer__close,
-  .admin-drawer__print-btn,
-  .admin-drawer__section--actions,
-  .admin-drawer__section--email,
-  .admin-drawer__note-input-row { display: none !important; }
+  .pr__rule {
+    border: none;
+    border-top: 1px dashed #ccc;
+    margin: 0.4cm 0;
+  }
+
+  .pr__meta { margin-bottom: 0.2cm; }
+  .pr__meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10pt;
+    padding: 1px 0;
+  }
+  .pr__meta-row span:first-child { color: #888; }
+
+  .pr__section h2 {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #aaa;
+    margin: 0 0 0.2cm;
+  }
+
+  .pr__row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10pt;
+    padding: 1px 0;
+  }
+  .pr__row span:first-child { color: #666; min-width: 5cm; }
+
+  .pr__table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.3cm;
+    font-size: 10pt;
+  }
+  .pr__table thead tr {
+    border-bottom: 1px solid #ddd;
+  }
+  .pr__table th {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #aaa;
+    font-weight: 600;
+    padding: 0 0 4px;
+  }
+  .pr__table td { padding: 3px 0; }
+  .pr__right { text-align: right !important; }
+
+  .pr__totals {
+    border-top: 1px solid #eee;
+    padding-top: 0.25cm;
+  }
+  .pr__total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10pt;
+    padding: 1px 0;
+    color: #555;
+  }
+  .pr__total-row--grand {
+    border-top: 1.5px solid #111;
+    margin-top: 4px;
+    padding-top: 4px;
+    font-size: 13pt;
+    font-weight: 800;
+    color: #111;
+  }
+  .pr__total-row--grand strong { font-weight: 900; }
+
+  .pr__footer {
+    text-align: center;
+    margin-top: 0.5cm;
+    font-size: 9pt;
+    color: #aaa;
+  }
+
+  .pr__mono { font-family: monospace !important; font-size: 9pt !important; }
 }
 </style>

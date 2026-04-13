@@ -66,6 +66,7 @@ export interface CustomerInfo {
   quiereFactura?: boolean
   facturaEmail?: string
   facturaRuc?: string
+  deliveryMethod?: 'delivery' | 'pickup'
 }
 
 // ── Payment ───────────────────────────────────────────────────────

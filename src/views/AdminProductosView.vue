@@ -85,6 +85,18 @@ const otherCatsForReassign = computed(() =>
     : [],
 )
 
+// Warns when every active flavor has a cap but they don't add up to boxSize
+const flavorLimitWarning = computed(() => {
+  if (!form.value.hasFlavors) return null
+  const active = (form.value.flavors ?? []).filter(f => f.isActive !== false && f.nombre)
+  if (!active.length) return null
+  const allLimited = active.every(f => (f.limite ?? 0) > 0)
+  if (!allLimited) return null
+  const sum = active.reduce((s, f) => s + (f.limite ?? 0), 0)
+  if (sum === (form.value.boxSize ?? 12)) return null
+  return { sum, boxSize: form.value.boxSize ?? 12 }
+})
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatPrice(n: number) { return `$${n.toFixed(2)}` }
 
@@ -854,6 +866,15 @@ onMounted(() => {
                     <div v-if="!form.flavors?.length" class="ap__flavors-empty">
                       <i class="fa-solid fa-bowl-food"></i>
                       <span>Aún no hay sabores. Agrega el primero.</span>
+                    </div>
+                  </div>
+
+                  <!-- Limit mismatch warning -->
+                  <div v-if="flavorLimitWarning" class="ap__flavor-warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div>
+                      <strong>Los límites no suman al tamaño de la caja</strong>
+                      <span>Suma de límites: {{ flavorLimitWarning.sum }} · Caja: {{ flavorLimitWarning.boxSize }} — el cliente no podrá completar la caja</span>
                     </div>
                   </div>
 
@@ -1999,6 +2020,28 @@ onMounted(() => {
     align-self: flex-start;
     font-size: 0.82rem;
     padding: 0.4rem 0.875rem;
+  }
+
+  &__flavor-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border: 1.5px solid #f6ad55;
+    border-radius: 0.75rem;
+    font-size: 0.8rem;
+    color: #92400e;
+
+    > i { color: #dd6b20; flex-shrink: 0; margin-top: 0.15rem; }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      strong { font-weight: 800; }
+      span { opacity: 0.8; }
+    }
   }
 
   // Keep check-label for category delete modal radios

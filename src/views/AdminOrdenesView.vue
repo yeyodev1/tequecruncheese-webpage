@@ -176,6 +176,10 @@ function closeOrder() {
   selectedOrder.value = null
 }
 
+function printOrder() {
+  window.print()
+}
+
 // ─── Status change (works from drawer + drag-drop + quick-move) ───────────────
 // ─── Card flight animation (GSAP) ────────────────────────────────────────────
 function flyCardTo(sourceEl: HTMLElement, targetStatus: OrderStatus) {
@@ -671,6 +675,10 @@ onBeforeUnmount(() => {
                   <i class="fa-solid" :class="STATUS_CONFIG[selectedOrder.status]?.icon"></i>
                   {{ STATUS_CONFIG[selectedOrder.status]?.label ?? selectedOrder.status }}
                 </span>
+                <button class="admin-drawer__print-btn" @click="printOrder">
+                  <i class="fa-solid fa-print"></i>
+                  Imprimir
+                </button>
                 <button class="admin-drawer__close" @click="closeOrder">
                   <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -1926,6 +1934,25 @@ onBeforeUnmount(() => {
     flex-shrink: 0;
   }
 
+  &__print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(255,255,255,0.18);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    color: $white;
+    height: 2rem;
+    padding: 0 0.875rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+    i { font-size: 0.8rem; }
+    &:hover { background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.6); }
+  }
+
   &__close {
     background: rgba(255,255,255,0.15);
     border: none;
@@ -2280,5 +2307,41 @@ onBeforeUnmount(() => {
 .email-ok-enter-from, .email-ok-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+</style>
+
+<style>
+@media print {
+  /* Hide everything except the order drawer */
+  body * { visibility: hidden !important; }
+
+  .admin-drawer,
+  .admin-drawer * { visibility: visible !important; }
+
+  .admin-drawer {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    z-index: 9999 !important;
+  }
+
+  .admin-drawer__body {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Hide interactive controls */
+  .admin-drawer__close,
+  .admin-drawer__print-btn,
+  .admin-drawer__section--actions,
+  .admin-drawer__section--email,
+  .admin-drawer__note-input-row { display: none !important; }
 }
 </style>

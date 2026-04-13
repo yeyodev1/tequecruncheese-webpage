@@ -54,6 +54,16 @@ const remaining  = computed(() => boxSize.value - totalSel.value)
 const isComplete = computed(() => totalSel.value === boxSize.value)
 const progress   = computed(() => Math.min((totalSel.value / boxSize.value) * 100, 100))
 
+const allActiveFlavors = computed(() => [...normalFlavors.value, ...especialFlavors.value])
+const hasAnyLimit = computed(() => allActiveFlavors.value.some(f => f.limite > 0))
+// True when remaining > 0 but every + button is disabled (limits exhausted before filling box)
+const isStuck = computed(() =>
+  !isComplete.value &&
+  remaining.value > 0 &&
+  allActiveFlavors.value.length > 0 &&
+  allActiveFlavors.value.every(f => !canAdd(f)),
+)
+
 function canAdd(flavor: ProductFlavor): boolean {
   if (remaining.value <= 0) return false
   if (flavor.grupo === 'especial' && especialTotal.value >= 2) return false
@@ -167,10 +177,14 @@ function close() { emit('update:modelValue', false) }
                   <span class="pdm__picker-size">Caja de {{ boxSize }}</span>
                 </div>
 
-                <!-- Freedom hint -->
-                <div class="pdm__freedom-hint">
+                <!-- Hint: freedom vs. per-flavor limits -->
+                <div v-if="!hasAnyLimit" class="pdm__freedom-hint">
                   <i class="fa-solid fa-circle-info"></i>
                   Distribuye los {{ boxSize }} como quieras — puedes poner todos en un solo sabor si quieres
+                </div>
+                <div v-else class="pdm__freedom-hint pdm__freedom-hint--limited">
+                  <i class="fa-solid fa-sliders"></i>
+                  Cada sabor tiene un máximo indicado. Total debe ser exactamente {{ boxSize }}.
                 </div>
 
                 <!-- Progress -->
@@ -281,6 +295,10 @@ function close() { emit('update:modelValue', false) }
             >
               <i class="fa-solid fa-cart-plus"></i>
               <span v-if="!product.inStock">Sin stock</span>
+              <span v-else-if="product.hasFlavors && hasFlavorsConfigured && isStuck">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Los límites no completan la caja — contacta al negocio
+              </span>
               <span v-else-if="product.hasFlavors && hasFlavorsConfigured && !isComplete">
                 Elige {{ remaining }} más para agregar
               </span>
@@ -672,6 +690,12 @@ $especial: #7c3aed;
     padding: 0.5rem 0.75rem;
     line-height: 1.4;
     i { flex-shrink: 0; margin-top: 0.1rem; font-size: 0.7rem; }
+
+    &--limited {
+      color: #744210;
+      background: #fffbeb;
+      border-color: #f6ad55;
+    }
   }
 
   &__flimit {

@@ -90,6 +90,10 @@ function getDeliveryCost(km: number): number {
   return 10.00
 }
 
+// ── Delivery method ────────────────────────────────────────────
+const deliveryMethod = ref<'delivery' | 'pickup'>('delivery')
+const isPickup = computed(() => deliveryMethod.value === 'pickup')
+
 // ── Short-URL resolution (goo.gl links need a backend redirect follow) ─
 const resolvedMapsUrl  = ref<string | null>(null)
 const isResolvingUrl   = ref(false)
@@ -122,7 +126,10 @@ const deliveryKm     = computed(() =>
     ? haversineKm(ORIGIN.lat, ORIGIN.lng, customerCoords.value.lat, customerCoords.value.lng)
     : null,
 )
-const deliveryCost   = computed(() => deliveryKm.value !== null ? getDeliveryCost(deliveryKm.value) : null)
+const deliveryCost   = computed(() => {
+  if (isPickup.value) return 0
+  return deliveryKm.value !== null ? getDeliveryCost(deliveryKm.value) : null
+})
 const grandTotal     = computed(() => cart.totalPrice + (deliveryCost.value ?? 0))
 
 // ── Factura state ──────────────────────────────────────────
@@ -170,8 +177,9 @@ const facturaRucValid   = computed(() => /^(\d{10}|\d{13})$/.test(facturaRuc.val
 const facturaEmailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facturaEmail.value))
 
 const formValid = computed(() => {
-  const base = emailValid.value && nombreValid.value && cedulaValid.value &&
-    telefonoValid.value && calleValid.value
+  const personal = emailValid.value && nombreValid.value && cedulaValid.value && telefonoValid.value
+  const address  = isPickup.value || calleValid.value
+  const base     = personal && address
   if (!quiereFactura.value) return base
   return base && facturaRucValid.value && facturaEmailValid.value
 })
@@ -202,13 +210,14 @@ async function checkout() {
       customerEmail: cart.customerInfo.email,
       customerInfo: {
         ...cart.customerInfo,
+        deliveryMethod: deliveryMethod.value,
         ...(quiereFactura.value && {
           quiereFactura: true,
           facturaEmail: facturaEmail.value,
           facturaRuc: facturaRuc.value,
         }),
       },
-      ...(deliveryCost.value !== null && { deliveryCost: deliveryCost.value }),
+      ...(deliveryCost.value ? { deliveryCost: deliveryCost.value } : {}),
     })
     window.location.href = result.payWithPayPhone
   } catch {
@@ -239,9 +248,11 @@ function orderByWhatsApp() {
     cart.customerInfo.referencia ? `Referencia: ${cart.customerInfo.referencia}` : '',
   ].filter(Boolean)
 
-  const deliveryLine = deliveryCost.value !== null
-    ? `Envío (${deliveryKm.value!.toFixed(1)} km): $${deliveryCost.value.toFixed(2)}`
-    : 'Envío: por coordinar'
+  const deliveryLine = isPickup.value
+    ? '🏪 Retiro en tienda (sin costo de envío)'
+    : deliveryCost.value
+      ? `Envío (${deliveryKm.value!.toFixed(1)} km): $${(deliveryCost.value as number).toFixed(2)}`
+      : 'Envío: por coordinar'
 
   const message = [
     '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
@@ -428,17 +439,53 @@ function orderByWhatsApp() {
             </div>
           </section>
 
-          <!-- Step 2: Dirección -->
+          <!-- Step 2: Método de entrega -->
           <section class="co-section">
             <div class="co-section__head">
               <span class="co-section__num">2</span>
               <div>
-                <h2 class="co-section__title">Dirección de entrega</h2>
-                <p class="co-section__hint">¿Dónde te entregamos?</p>
+                <h2 class="co-section__title">Método de entrega</h2>
+                <p class="co-section__hint">¿Cómo recibes tu pedido?</p>
               </div>
             </div>
 
-            <div class="co-fields">
+            <!-- Delivery method toggle -->
+            <div class="co-delivery-method">
+              <button
+                class="co-delivery-method__btn"
+                :class="{ 'co-delivery-method__btn--active': deliveryMethod === 'delivery' }"
+                @click="deliveryMethod = 'delivery'"
+              >
+                <i class="fa-solid fa-truck"></i>
+                <div>
+                  <strong>Envío a domicilio</strong>
+                  <span>Te lo llevamos a tu puerta</span>
+                </div>
+              </button>
+              <button
+                class="co-delivery-method__btn"
+                :class="{ 'co-delivery-method__btn--active': deliveryMethod === 'pickup' }"
+                @click="deliveryMethod = 'pickup'"
+              >
+                <i class="fa-solid fa-store"></i>
+                <div>
+                  <strong>Recoger en tienda</strong>
+                  <span>Sin costo de envío</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Pickup notice -->
+            <div v-if="isPickup" class="co-pickup-info">
+              <i class="fa-solid fa-location-dot"></i>
+              <div>
+                <strong>Retira en nuestro local</strong>
+                <span>Te avisamos cuando tu pedido esté listo</span>
+              </div>
+            </div>
+
+            <!-- Delivery address fields (hidden for pickup) -->
+            <div v-if="!isPickup" class="co-fields" style="margin-top:1.25rem">
 
               <!-- Calle -->
               <div class="co-field">
@@ -544,7 +591,7 @@ function orderByWhatsApp() {
                 </Transition>
               </div>
 
-            </div>
+            </div><!-- /v-if !isPickup co-fields -->
 
             <!-- Factura toggle -->
             <div class="co-factura-toggle" @click="quiereFactura = !quiereFactura">
@@ -722,18 +769,19 @@ function orderByWhatsApp() {
                 <span>Subtotal</span>
                 <span>${{ cart.totalPrice.toFixed(2) }}</span>
               </div>
-              <div v-if="deliveryCost !== null" class="co-summary__row co-summary__row--delivery">
+              <div v-if="isPickup" class="co-summary__row co-summary__row--delivery">
+                <span><i class="fa-solid fa-store"></i> Retiro en tienda</span>
+                <span>Gratis</span>
+              </div>
+              <div v-else-if="deliveryCost !== null && deliveryCost > 0" class="co-summary__row co-summary__row--delivery">
                 <span>
                   <i class="fa-solid fa-truck"></i>
                   Envío ({{ deliveryKm!.toFixed(1) }} km)
                 </span>
-                <span>${{ deliveryCost.toFixed(2) }}</span>
+                <span>${{ (deliveryCost as number).toFixed(2) }}</span>
               </div>
               <div v-else class="co-summary__row co-summary__row--delivery-pending">
-                <span>
-                  <i class="fa-solid fa-truck"></i>
-                  Envío
-                </span>
+                <span><i class="fa-solid fa-truck"></i> Envío</span>
                 <span>por coordinar</span>
               </div>
               <div class="co-summary__row co-summary__row--total">
@@ -1027,6 +1075,74 @@ $bg:      #f8f6f3;
 
 // ── Payment section internals ─────────────────────────────────
 // ── Factura ───────────────────────────────────────────────────────────────────
+// ── Delivery method selector ──────────────────────────────────
+.co-delivery-method {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.875rem;
+    border: 2px solid #e8e5e0;
+    background: #fafafa;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+
+    > i { font-size: 1.1rem; color: #bbb; flex-shrink: 0; transition: color 0.15s; }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      min-width: 0;
+      strong { font-size: 0.82rem; font-weight: 800; color: #444; line-height: 1.2; }
+      span   { font-size: 0.7rem; color: #aaa; }
+    }
+
+    &--active {
+      border-color: $accent;
+      background: rgba($accent, 0.04);
+      box-shadow: 0 0 0 3px rgba($accent, 0.07);
+      > i { color: $accent; }
+      div strong { color: $accent; }
+    }
+
+    &:not(&--active):hover {
+      border-color: #ccc;
+      background: #f5f5f5;
+    }
+  }
+}
+
+.co-pickup-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #f0fff4;
+  border: 1.5px solid #9ae6b4;
+  border-radius: 0.875rem;
+  margin-top: 0.75rem;
+  color: #276749;
+  font-size: 0.85rem;
+
+  > i { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; color: #38a169; }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    strong { font-weight: 800; }
+    span   { font-size: 0.78rem; opacity: 0.8; }
+  }
+}
+
 .co-factura-toggle {
   display: flex;
   align-items: center;

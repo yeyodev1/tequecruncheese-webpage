@@ -177,7 +177,103 @@ function closeOrder() {
 }
 
 function printOrder() {
-  window.print()
+  const o = selectedOrder.value
+  if (!o) return
+
+  const esc = (s?: string | null) => (s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const dateStr = new Date(o.createdAt).toLocaleString('es-EC', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+  const statusLabel = STATUS_CONFIG[o.status]?.label ?? o.status
+  const subtotal = o.total - (o.deliveryCost ?? 0)
+
+  const itemRows = o.items.map(item => `
+    <tr>
+      <td>${esc(item.nombre)}</td>
+      <td class="r">x${item.cantidad}</td>
+      <td class="r">$${(item.precio * item.cantidad).toFixed(2)}</td>
+    </tr>`).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Pedido #${esc(o.trackingToken)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; width: 80mm; padding: 5mm 4mm; color: #000; background: #fff; }
+  .center { text-align:center; }
+  .bold { font-weight:bold; }
+  h1 { font-size:20px; font-weight:900; letter-spacing:-0.03em; margin-bottom:2px; }
+  .sub { font-size:10px; color:#555; margin-bottom:4px; }
+  hr { border:none; border-top:1px dashed #000; margin:6px 0; }
+  .section-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#555; margin:4px 0 3px; }
+  .row { display:table; width:100%; padding:1px 0; }
+  .row .lbl { display:table-cell; color:#555; font-size:11px; width:38%; }
+  .row .val { display:table-cell; font-weight:700; font-size:11px; }
+  table { width:100%; border-collapse:collapse; margin:4px 0; }
+  th { font-size:9px; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #000; padding:2px 0; text-align:left; }
+  td { padding:3px 0; font-size:12px; vertical-align:top; }
+  .r { text-align:right; }
+  .totals { border-top:1px dashed #000; padding-top:5px; margin-top:3px; }
+  .trow { display:table; width:100%; padding:1px 0; font-size:12px; }
+  .trow .tl { display:table-cell; color:#555; }
+  .trow .tv { display:table-cell; text-align:right; font-weight:700; }
+  .grand { border-top:2px solid #000; margin-top:4px; padding-top:5px; font-size:15px; }
+  .grand .tl, .grand .tv { font-weight:900; color:#000; }
+  .footer { text-align:center; margin-top:8px; font-size:10px; color:#555; }
+  @media print { @page { margin:0; } body { width:100%; } }
+</style>
+</head>
+<body>
+<div class="center">
+  <h1>Tequecruncheese</h1>
+  <div class="sub">tequecruncheese.com</div>
+</div>
+<hr>
+<div class="row"><span class="lbl">Pedido</span><span class="val">#${esc(o.trackingToken)}</span></div>
+<div class="row"><span class="lbl">Fecha</span><span class="val">${dateStr}</span></div>
+<div class="row"><span class="lbl">Estado</span><span class="val">${esc(statusLabel)}</span></div>
+<hr>
+<div class="section-title">Cliente</div>
+${o.customerName  ? `<div class="row"><span class="lbl">Nombre</span><span class="val">${esc(o.customerName)}</span></div>` : ''}
+${o.customerPhone ? `<div class="row"><span class="lbl">Teléfono</span><span class="val">${esc(o.customerPhone)}</span></div>` : ''}
+${o.cedula        ? `<div class="row"><span class="lbl">Cédula</span><span class="val">${esc(o.cedula)}</span></div>` : ''}
+<div class="row"><span class="lbl">Email</span><span class="val">${esc(o.customerEmail)}</span></div>
+${o.deliveryAddress?.calle ? `
+<hr>
+<div class="section-title">Dirección de entrega</div>
+<div class="row"><span class="lbl">Calle</span><span class="val">${esc(o.deliveryAddress.calle)}</span></div>
+${o.deliveryAddress.barrio     ? `<div class="row"><span class="lbl">Barrio</span><span class="val">${esc(o.deliveryAddress.barrio)}</span></div>` : ''}
+${o.deliveryAddress.referencia ? `<div class="row"><span class="lbl">Referencia</span><span class="val">${esc(o.deliveryAddress.referencia)}</span></div>` : ''}
+` : ''}
+<hr>
+<div class="section-title">Productos</div>
+<table>
+  <thead><tr><th>Producto</th><th class="r">Cant.</th><th class="r">Total</th></tr></thead>
+  <tbody>${itemRows}</tbody>
+</table>
+<div class="totals">
+  <div class="trow"><span class="tl">Subtotal</span><span class="tv">$${subtotal.toFixed(2)}</span></div>
+  ${o.deliveryCost ? `<div class="trow"><span class="tl">Envío</span><span class="tv">$${o.deliveryCost.toFixed(2)}</span></div>` : ''}
+  <div class="trow grand"><span class="tl">TOTAL</span><span class="tv">$${o.total.toFixed(2)}</span></div>
+</div>
+${o.quiereFactura ? `
+<hr>
+<div class="section-title">Datos de facturación</div>
+<div class="row"><span class="lbl">RUC/Cédula</span><span class="val">${esc(o.facturaRuc)}</span></div>
+${o.facturaEmail ? `<div class="row"><span class="lbl">Email</span><span class="val">${esc(o.facturaEmail)}</span></div>` : ''}
+` : ''}
+<hr>
+<div class="footer">¡Gracias por tu pedido!</div>
+<script>
+  window.onload = function() { setTimeout(function(){ window.print(); }, 250); };
+  window.onafterprint = function() { window.close(); };
+<\/script>
+</body></html>`
+
+  const win = window.open('', '_blank', 'width=340,height=700,toolbar=0,menubar=0')
+  if (!win) return
+  win.document.write(html)
+  win.document.close()
 }
 
 // ─── Status change (works from drawer + drag-drop + quick-move) ───────────────
@@ -909,121 +1005,6 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
     </Teleport>
-
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <!-- PRINT RECEIPT — hidden on screen, shown only on @print   -->
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <div v-if="selectedOrder" class="print-receipt">
-
-      <div class="pr__header">
-        <h1>Tequecruncheese</h1>
-        <p>tequecruncheese.com</p>
-      </div>
-
-      <div class="pr__rule"></div>
-
-      <div class="pr__meta">
-        <div class="pr__meta-row">
-          <span>Pedido</span>
-          <span class="pr__mono">#{{ selectedOrder.trackingToken }}</span>
-        </div>
-        <div class="pr__meta-row">
-          <span>Fecha</span>
-          <span>{{ formatDate(selectedOrder.createdAt) }}</span>
-        </div>
-        <div class="pr__meta-row">
-          <span>Estado</span>
-          <span><strong>{{ STATUS_CONFIG[selectedOrder.status]?.label ?? selectedOrder.status }}</strong></span>
-        </div>
-      </div>
-
-      <div class="pr__rule"></div>
-
-      <div class="pr__section">
-        <h2>Cliente</h2>
-        <div v-if="selectedOrder.customerName" class="pr__row">
-          <span>Nombre</span><span>{{ selectedOrder.customerName }}</span>
-        </div>
-        <div v-if="selectedOrder.customerPhone" class="pr__row">
-          <span>Teléfono</span><span>{{ selectedOrder.customerPhone }}</span>
-        </div>
-        <div v-if="selectedOrder.cedula" class="pr__row">
-          <span>Cédula</span><span>{{ selectedOrder.cedula }}</span>
-        </div>
-        <div v-if="selectedOrder.customerEmail" class="pr__row">
-          <span>Email</span><span>{{ selectedOrder.customerEmail }}</span>
-        </div>
-      </div>
-
-      <template v-if="selectedOrder.deliveryAddress?.calle">
-        <div class="pr__rule"></div>
-        <div class="pr__section">
-          <h2>Dirección de entrega</h2>
-          <div class="pr__row">
-            <span>Calle</span><span>{{ selectedOrder.deliveryAddress.calle }}</span>
-          </div>
-          <div v-if="selectedOrder.deliveryAddress.barrio" class="pr__row">
-            <span>Barrio</span><span>{{ selectedOrder.deliveryAddress.barrio }}</span>
-          </div>
-          <div v-if="selectedOrder.deliveryAddress.referencia" class="pr__row">
-            <span>Referencia</span><span>{{ selectedOrder.deliveryAddress.referencia }}</span>
-          </div>
-        </div>
-      </template>
-
-      <div class="pr__rule"></div>
-
-      <div class="pr__section">
-        <h2>Productos</h2>
-        <table class="pr__table">
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th class="pr__right">Cant.</th>
-              <th class="pr__right">Precio</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in selectedOrder.items" :key="item.slug">
-              <td>{{ item.nombre }}</td>
-              <td class="pr__right">× {{ item.cantidad }}</td>
-              <td class="pr__right">${{ (item.precio * item.cantidad).toFixed(2) }}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="pr__totals">
-          <div class="pr__total-row">
-            <span>Subtotal</span>
-            <span>${{ (selectedOrder.total - (selectedOrder.deliveryCost ?? 0)).toFixed(2) }}</span>
-          </div>
-          <div v-if="selectedOrder.deliveryCost" class="pr__total-row">
-            <span>Envío</span>
-            <span>${{ selectedOrder.deliveryCost.toFixed(2) }}</span>
-          </div>
-          <div class="pr__total-row pr__total-row--grand">
-            <span>TOTAL</span>
-            <strong>${{ selectedOrder.total.toFixed(2) }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <template v-if="selectedOrder.quiereFactura">
-        <div class="pr__rule"></div>
-        <div class="pr__section">
-          <h2>Datos de facturación</h2>
-          <div class="pr__row"><span>RUC / Cédula</span><span>{{ selectedOrder.facturaRuc }}</span></div>
-          <div v-if="selectedOrder.facturaEmail" class="pr__row"><span>Email factura</span><span>{{ selectedOrder.facturaEmail }}</span></div>
-        </div>
-      </template>
-
-      <div class="pr__rule"></div>
-      <div class="pr__footer">
-        <p>¡Gracias por tu pedido!</p>
-        <p class="pr__mono">tequecruncheese.com</p>
-      </div>
-
-    </div><!-- /print-receipt -->
 
   </div>
 </template>
@@ -2425,126 +2406,4 @@ onBeforeUnmount(() => {
   transform: translateY(-6px);
 }
 
-// ── Print receipt (hidden on screen) ──────────────────────────
-.print-receipt { display: none; }
-</style>
-
-<style>
-/* ── Receipt styles (only for print) ───────────────────────── */
-@media print {
-  /* Hide the entire app, show only the receipt */
-  body * { visibility: hidden !important; }
-  .print-receipt,
-  .print-receipt * { visibility: visible !important; }
-
-  .print-receipt {
-    display: block !important;
-    position: fixed !important;
-    inset: 0 !important;
-    padding: 2cm 2.5cm !important;
-    background: #fff !important;
-    font-family: 'Helvetica Neue', Arial, sans-serif !important;
-    font-size: 11pt !important;
-    color: #111 !important;
-    line-height: 1.5 !important;
-  }
-
-  .pr__header {
-    text-align: center;
-    margin-bottom: 0.6cm;
-  }
-  .pr__header h1 {
-    font-size: 18pt;
-    font-weight: 900;
-    letter-spacing: -0.03em;
-    margin: 0 0 2px;
-  }
-  .pr__header p {
-    font-size: 9pt;
-    color: #888;
-    margin: 0;
-  }
-
-  .pr__rule {
-    border: none;
-    border-top: 1px dashed #ccc;
-    margin: 0.4cm 0;
-  }
-
-  .pr__meta { margin-bottom: 0.2cm; }
-  .pr__meta-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10pt;
-    padding: 1px 0;
-  }
-  .pr__meta-row span:first-child { color: #888; }
-
-  .pr__section h2 {
-    font-size: 8pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #aaa;
-    margin: 0 0 0.2cm;
-  }
-
-  .pr__row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10pt;
-    padding: 1px 0;
-  }
-  .pr__row span:first-child { color: #666; min-width: 5cm; }
-
-  .pr__table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 0.3cm;
-    font-size: 10pt;
-  }
-  .pr__table thead tr {
-    border-bottom: 1px solid #ddd;
-  }
-  .pr__table th {
-    font-size: 8pt;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #aaa;
-    font-weight: 600;
-    padding: 0 0 4px;
-  }
-  .pr__table td { padding: 3px 0; }
-  .pr__right { text-align: right !important; }
-
-  .pr__totals {
-    border-top: 1px solid #eee;
-    padding-top: 0.25cm;
-  }
-  .pr__total-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10pt;
-    padding: 1px 0;
-    color: #555;
-  }
-  .pr__total-row--grand {
-    border-top: 1.5px solid #111;
-    margin-top: 4px;
-    padding-top: 4px;
-    font-size: 13pt;
-    font-weight: 800;
-    color: #111;
-  }
-  .pr__total-row--grand strong { font-weight: 900; }
-
-  .pr__footer {
-    text-align: center;
-    margin-top: 0.5cm;
-    font-size: 9pt;
-    color: #aaa;
-  }
-
-  .pr__mono { font-family: monospace !important; font-size: 9pt !important; }
-}
 </style>

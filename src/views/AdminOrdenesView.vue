@@ -199,27 +199,26 @@ function printOrder() {
 <title>Pedido #${esc(o.trackingToken)}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; width: 80mm; padding: 5mm 4mm; color: #000; background: #fff; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 13px; font-weight: 700; width: 80mm; padding: 5mm 4mm; color: #000; background: #fff; }
   .center { text-align:center; }
-  .bold { font-weight:bold; }
   h1 { font-size:20px; font-weight:900; letter-spacing:-0.03em; margin-bottom:2px; }
-  .sub { font-size:10px; color:#555; margin-bottom:4px; }
+  .sub { font-size:10px; margin-bottom:4px; }
   hr { border:none; border-top:1px dashed #000; margin:6px 0; }
-  .section-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#555; margin:4px 0 3px; }
+  .section-title { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:0.08em; margin:4px 0 3px; }
   .row { display:table; width:100%; padding:1px 0; }
-  .row .lbl { display:table-cell; color:#555; font-size:11px; width:38%; }
-  .row .val { display:table-cell; font-weight:700; font-size:11px; }
+  .row .lbl { display:table-cell; font-size:11px; width:38%; }
+  .row .val { display:table-cell; font-weight:900; font-size:11px; }
   table { width:100%; border-collapse:collapse; margin:4px 0; }
-  th { font-size:9px; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #000; padding:2px 0; text-align:left; }
-  td { padding:3px 0; font-size:12px; vertical-align:top; }
+  th { font-size:9px; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #000; padding:2px 0; text-align:left; font-weight:900; }
+  td { padding:3px 0; font-size:12px; font-weight:700; vertical-align:top; }
   .r { text-align:right; }
   .totals { border-top:1px dashed #000; padding-top:5px; margin-top:3px; }
   .trow { display:table; width:100%; padding:1px 0; font-size:12px; }
-  .trow .tl { display:table-cell; color:#555; }
-  .trow .tv { display:table-cell; text-align:right; font-weight:700; }
+  .trow .tl { display:table-cell; font-weight:700; }
+  .trow .tv { display:table-cell; text-align:right; font-weight:900; }
   .grand { border-top:2px solid #000; margin-top:4px; padding-top:5px; font-size:15px; }
-  .grand .tl, .grand .tv { font-weight:900; color:#000; }
-  .footer { text-align:center; margin-top:8px; font-size:10px; color:#555; }
+  .grand .tl, .grand .tv { font-weight:900; }
+  .footer { text-align:center; margin-top:8px; font-size:10px; font-weight:700; }
   @media print { @page { margin:0; } body { width:100%; } }
 </style>
 </head>

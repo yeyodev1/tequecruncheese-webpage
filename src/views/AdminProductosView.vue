@@ -823,11 +823,11 @@ onMounted(() => {
                   </div>
 
                   <!-- Preview -->
-                  <div v-if="form.batchSize > 1 && form.boxSize % form.batchSize === 0" class="ap__batch-preview">
+                  <div v-if="(form.batchSize ?? 0) > 1 && batchDivisible" class="ap__batch-preview">
                     <i class="fa-solid fa-circle-check"></i>
-                    Caja de {{ form.boxSize }} → {{ form.boxSize / form.batchSize }} lotes de {{ form.batchSize }}
+                    Caja de {{ form.boxSize }} → {{ (form.boxSize ?? 0) / (form.batchSize ?? 1) }} lotes de {{ form.batchSize }}
                   </div>
-                  <div v-else-if="form.batchSize > 1 && form.boxSize % form.batchSize !== 0" class="ap__batch-preview ap__batch-preview--warn">
+                  <div v-else-if="(form.batchSize ?? 0) > 1 && !batchDivisible" class="ap__batch-preview ap__batch-preview--warn">
                     <i class="fa-solid fa-triangle-exclamation"></i>
                     {{ form.boxSize }} no es divisible entre {{ form.batchSize }} — el cliente no podrá completar la caja
                   </div>

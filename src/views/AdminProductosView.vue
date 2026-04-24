@@ -44,6 +44,7 @@ const form = ref<ProductPayload>({
   isActive:    true,
   hasFlavors:  false,
   boxSize:     12,
+  batchSize:   1,
   flavors:     [],
 })
 
@@ -97,6 +98,12 @@ const flavorLimitWarning = computed(() => {
   return { sum, boxSize: form.value.boxSize ?? 12 }
 })
 
+const batchDivisible = computed(() => {
+  const bs = form.value.batchSize ?? 1
+  const box = form.value.boxSize ?? 12
+  return bs <= 1 || box % bs === 0
+})
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatPrice(n: number) { return `$${n.toFixed(2)}` }
 
@@ -133,7 +140,7 @@ function openCreate() {
     slug: '', nombre: '', descripcion: '', precio: 0,
     categoria: '', imagen: { url: '', publicId: '' },
     inStock: true, hasStock: false, stockCount: 0, isActive: true,
-    hasFlavors: false, boxSize: 12, flavors: [],
+    hasFlavors: false, boxSize: 12, batchSize: 1, flavors: [],
   }
   imagePreview.value = ''
   uploadedUrl.value = ''
@@ -158,6 +165,7 @@ function openEdit(p: Product) {
     isActive:    p.isActive,
     hasFlavors:  p.hasFlavors ?? false,
     boxSize:     p.boxSize ?? 12,
+    batchSize:   p.batchSize ?? 1,
     flavors:     p.flavors ? p.flavors.map(f => ({ ...f })) : [],
   }
   imagePreview.value = p.imagen?.url ?? ''
@@ -787,7 +795,7 @@ onMounted(() => {
               <Transition name="fade">
                 <div v-if="form.hasFlavors" class="ap__flavors-config">
 
-                  <!-- Box size -->
+                  <!-- Box size + batch size -->
                   <div class="ap__flavors-boxsize">
                     <i class="fa-solid fa-box-open"></i>
                     <label>Tamaño de caja</label>
@@ -795,10 +803,33 @@ onMounted(() => {
                       v-model.number="form.boxSize"
                       type="number"
                       min="1"
-                      max="100"
+                      max="200"
                       class="ap__flavors-boxsize-input"
                     />
-                    <span class="ap__flavors-boxsize-unit">unidades por caja</span>
+                    <span class="ap__flavors-boxsize-unit">unidades</span>
+                  </div>
+
+                  <div class="ap__flavors-boxsize">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <label>Incremento por sabor</label>
+                    <input
+                      v-model.number="form.batchSize"
+                      type="number"
+                      min="1"
+                      :max="form.boxSize"
+                      class="ap__flavors-boxsize-input"
+                    />
+                    <span class="ap__flavors-boxsize-unit">de {{ form.batchSize }} en {{ form.batchSize }}</span>
+                  </div>
+
+                  <!-- Preview -->
+                  <div v-if="form.batchSize > 1 && form.boxSize % form.batchSize === 0" class="ap__batch-preview">
+                    <i class="fa-solid fa-circle-check"></i>
+                    Caja de {{ form.boxSize }} → {{ form.boxSize / form.batchSize }} lotes de {{ form.batchSize }}
+                  </div>
+                  <div v-else-if="form.batchSize > 1 && form.boxSize % form.batchSize !== 0" class="ap__batch-preview ap__batch-preview--warn">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    {{ form.boxSize }} no es divisible entre {{ form.batchSize }} — el cliente no podrá completar la caja
                   </div>
 
                   <!-- Flavor list -->
@@ -1875,6 +1906,21 @@ onMounted(() => {
   }
 
   &__flavors-boxsize-unit { color: #999; font-size: 0.8rem; }
+
+  &__batch-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #38a169;
+    padding: 0.4rem 0.6rem;
+    background: #f0fff4;
+    border-radius: 0.5rem;
+    border: 1px solid #c6f6d5;
+    i { font-size: 0.75rem; }
+    &--warn { color: #c05621; background: #fffaf0; border-color: #fbd38d; }
+  }
 
   &__flavors-list {
     display: flex;

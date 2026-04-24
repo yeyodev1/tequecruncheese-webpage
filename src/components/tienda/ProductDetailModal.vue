@@ -45,10 +45,13 @@ const especialFlavors = computed<ProductFlavor[]>(() =>
   (p.value?.flavors ?? []).filter(f => f.grupo === 'especial' && f.isActive),
 )
 
-const boxSize      = computed(() => p.value?.boxSize ?? 12)
-const totalSel     = computed(() => Object.values(counts.value).reduce((s, n) => s + n, 0))
-const especialTotal = computed(() =>
-  especialFlavors.value.reduce((s, f) => s + (counts.value[f.nombre] ?? 0), 0),
+const boxSize   = computed(() => p.value?.boxSize ?? 12)
+const batchSize = computed(() => Math.max(1, p.value?.batchSize ?? 1))
+const totalSel  = computed(() => Object.values(counts.value).reduce((s, n) => s + n, 0))
+
+// For especial cap: count distinct especial flavors selected (not units), max 2 selections
+const especialSelected = computed(() =>
+  especialFlavors.value.filter(f => (counts.value[f.nombre] ?? 0) > 0).length,
 )
 const remaining  = computed(() => boxSize.value - totalSel.value)
 const isComplete = computed(() => totalSel.value === boxSize.value)
@@ -56,7 +59,6 @@ const progress   = computed(() => Math.min((totalSel.value / boxSize.value) * 10
 
 const allActiveFlavors = computed(() => [...normalFlavors.value, ...especialFlavors.value])
 const hasAnyLimit = computed(() => allActiveFlavors.value.some(f => f.limite > 0))
-// True when remaining > 0 but every + button is disabled (limits exhausted before filling box)
 const isStuck = computed(() =>
   !isComplete.value &&
   remaining.value > 0 &&
@@ -65,18 +67,22 @@ const isStuck = computed(() =>
 )
 
 function canAdd(flavor: ProductFlavor): boolean {
-  if (remaining.value <= 0) return false
-  if (flavor.grupo === 'especial' && especialTotal.value >= 2) return false
-  if (flavor.limite > 0 && (counts.value[flavor.nombre] ?? 0) >= flavor.limite) return false
+  if (remaining.value < batchSize.value) return false
+  if (flavor.grupo === 'especial') {
+    const alreadyHas = (counts.value[flavor.nombre] ?? 0) > 0
+    if (!alreadyHas && especialSelected.value >= 2) return false
+  }
+  if (flavor.limite > 0 && (counts.value[flavor.nombre] ?? 0) + batchSize.value > flavor.limite) return false
   return true
 }
 function addFlavor(f: ProductFlavor) {
   if (!canAdd(f)) return
-  counts.value[f.nombre] = (counts.value[f.nombre] ?? 0) + 1
+  counts.value[f.nombre] = (counts.value[f.nombre] ?? 0) + batchSize.value
 }
 function subFlavor(nombre: string) {
-  if ((counts.value[nombre] ?? 0) <= 0) return
-  counts.value[nombre] = (counts.value[nombre] ?? 1) - 1
+  const cur = counts.value[nombre] ?? 0
+  if (cur <= 0) return
+  counts.value[nombre] = Math.max(0, cur - batchSize.value)
 }
 
 // ── Cart actions ──────────────────────────────────────────────
@@ -177,8 +183,12 @@ function close() { emit('update:modelValue', false) }
                   <span class="pdm__picker-size">Caja de {{ boxSize }}</span>
                 </div>
 
-                <!-- Hint: freedom vs. per-flavor limits -->
-                <div v-if="!hasAnyLimit" class="pdm__freedom-hint">
+                <!-- Hint -->
+                <div v-if="batchSize > 1" class="pdm__freedom-hint">
+                  <i class="fa-solid fa-layer-group"></i>
+                  Elige de {{ batchSize }} en {{ batchSize }} por sabor · Total exacto: {{ boxSize }}
+                </div>
+                <div v-else-if="!hasAnyLimit" class="pdm__freedom-hint">
                   <i class="fa-solid fa-circle-info"></i>
                   Distribuye los {{ boxSize }} como quieras — puedes poner todos en un solo sabor si quieres
                 </div>
@@ -201,10 +211,12 @@ function close() { emit('update:modelValue', false) }
                       <i class="fa-solid fa-circle-check"></i> ¡Caja lista!
                     </template>
                     <template v-else-if="totalSel === 0">
-                      {{ boxSize }} disponibles para repartir
+                      <template v-if="batchSize > 1">{{ boxSize / batchSize }} lotes de {{ batchSize }} para repartir</template>
+                      <template v-else>{{ boxSize }} disponibles para repartir</template>
                     </template>
                     <template v-else>
-                      {{ totalSel }} elegidos · {{ remaining }} restantes
+                      <template v-if="batchSize > 1">{{ totalSel / batchSize }}/{{ boxSize / batchSize }} lotes elegidos</template>
+                      <template v-else>{{ totalSel }} elegidos · {{ remaining }} restantes</template>
                     </template>
                   </span>
                 </div>
@@ -250,7 +262,7 @@ function close() { emit('update:modelValue', false) }
                     Especiales
                     <span class="pdm__fgroup-hint pdm__fgroup-hint--especial">
                       <i class="fa-solid fa-star"></i>
-                      Máx. 2 por caja · {{ especialTotal }}/2
+                      Máx. 2 sabores especiales · {{ especialSelected }}/2
                     </span>
                   </div>
                   <div class="pdm__flist">
@@ -300,7 +312,10 @@ function close() { emit('update:modelValue', false) }
                 Los límites no completan la caja — contacta al negocio
               </span>
               <span v-else-if="product.hasFlavors && hasFlavorsConfigured && !isComplete">
-                Elige {{ remaining }} más para agregar
+                <template v-if="batchSize > 1">
+                  Faltan {{ remaining / batchSize }} lote{{ remaining / batchSize !== 1 ? 's' : '' }} de {{ batchSize }}
+                </template>
+                <template v-else>Elige {{ remaining }} más para agregar</template>
               </span>
               <span v-else-if="product.hasFlavors && hasFlavorsConfigured">Agregar al carrito</span>
               <span v-else>

@@ -32,6 +32,7 @@ export interface Product {
   sortOrder?: number
   hasFlavors?: boolean
   boxSize?: number
+  batchSize?: number
   flavors?: ProductFlavor[]
   createdAt?: string
   updatedAt?: string

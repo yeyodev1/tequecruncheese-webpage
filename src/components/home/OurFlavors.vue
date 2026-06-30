@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 import GalleryModal from './GalleryModal.vue'
@@ -117,7 +118,7 @@ onUnmounted(() => {
           </div>
           
           <div class="flavor-card__action mt-auto">
-            <span class="flavor-card__discover">Siente el crunch <span class="arrow">→</span></span>
+            <RouterLink to="/tienda" class="flavor-card__discover">Siente el crunch <span class="arrow">→</span></RouterLink>
           </div>
         </div>
       </article>
@@ -318,6 +319,7 @@ onUnmounted(() => {
     font-size: 0.95rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    text-decoration: none;
 
     .arrow {
       margin-left: 8px;

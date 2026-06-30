@@ -23,7 +23,7 @@ const showcaseItems = ref([
   },
   {
     id: 3,
-    image: cloudImg('DSC06180.jpg', { width: 900, crop: 'fill' }),
+    image: cloudImg('IMG_2253.JPG.jpeg', { width: 900, crop: 'fill' }),
     title: 'Salsas Gourmet',
     description: 'Acompaña nuestras delicias crujientes con exquisitas salsas artesanales.',
   }

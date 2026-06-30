@@ -55,6 +55,7 @@ export const CLOUD_IDS: Record<string, string> = {
   'thumbnail (1).jpeg':       'tequecruncheese/stock/thumbnail (1)',
   'thumbnail (3).jpeg':       'tequecruncheese/stock/thumbnail (3)',
   'thumbnail (4).jpeg':       'tequecruncheese/stock/thumbnail (4)',
+  'IMG_2253.JPG.jpeg':        'tequecruncheese/stock/IMG_2253',
   // Logos
   'logo-long.png':            'tequecruncheese/logos/logo-long',
   'logo-small.png':           'tequecruncheese/logos/logo-small',

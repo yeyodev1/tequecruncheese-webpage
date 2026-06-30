@@ -3,7 +3,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
-import GalleryModal from './GalleryModal.vue'
 
 import { cloudImg } from '@/services/cloudinary'
 
@@ -21,8 +20,6 @@ const flavors = [
 
 const sectionRef = ref<HTMLElement | null>(null)
 let ctx: gsap.Context
-
-const isGalleryOpen = ref(false)
 
 onMounted(() => {
   ctx = gsap.context(() => {
@@ -131,13 +128,10 @@ onUnmounted(() => {
             Impresiona a tus invitados con nuestras monumentales bandejas de <strong>SOLO QUESO</strong>. 
             Calidad premium, salsa inagotable y una crujencia inigualable para ser el centro de atención en tu evento.
           </p>
-          <button class="btn btn--primary mt-md" @click="isGalleryOpen = true">Ver Galería</button>
+          <RouterLink to="/tienda" class="btn btn--primary mt-md">Ver Galería</RouterLink>
         </div>
       </article>
-
     </div>
-    
-    <GalleryModal :isOpen="isGalleryOpen" @close="isGalleryOpen = false" />
   </section>
 </template>
 

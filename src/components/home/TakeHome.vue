@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 import { cloudImg } from '@/services/cloudinary'
 const frozenImg = cloudImg('DSC06027.jpg', { width: 800, crop: 'fill' })
 
 gsap.registerPlugin(ScrollTrigger)
-
-const waBandeja = 'https://wa.me/593963237880?text=' + encodeURIComponent(
-  'Hola TequeCruncheese! 👋 Me gustaría reservar una bandeja de tequeños congelados.\n\n' +
-  '¿Me pueden informar sobre:\n' +
-  '• Sabores disponibles\n' +
-  '• Tamaños de bandejas y precios\n' +
-  '• Tiempo de entrega\n\n' +
-  '¡Gracias!'
-)
 
 const frozenBenefits = [
   'Listos para freír en la comodidad de tu hogar',
@@ -150,9 +142,9 @@ onUnmounted(() => {
         </ul>
 
         <div class="take-home__action">
-          <a :href="waBandeja" target="_blank" rel="noopener" class="btn btn--primary take-home__btn" style="text-decoration:none;">
-            <i class="fa-brands fa-whatsapp"></i> Reserva tu Bandeja
-          </a>
+          <RouterLink to="/tienda" class="btn btn--primary take-home__btn" style="text-decoration:none;">
+            <i class="fa-solid fa-bag-shopping"></i> Reserva tu Bandeja
+          </RouterLink>
         </div>
       </div>
     </div>

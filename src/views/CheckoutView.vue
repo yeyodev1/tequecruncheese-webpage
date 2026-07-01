@@ -47,18 +47,27 @@ const ORIGIN = { lat: -2.1647443, lng: -79.912804 } // Tequecruncheese, Guayaqui
 
 function extractCoordsFromMapsUrl(url: string): { lat: number; lng: number } | null {
   if (!url) return null
-  // Format: @lat,lng,zoom  (most Google Maps share links)
-  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-  if (atMatch) return { lat: parseFloat(atMatch[1]!), lng: parseFloat(atMatch[2]!) }
-  // Format: /maps/search/lat,+lng  (resolved goo.gl short links)
-  const searchMatch = url.match(/\/maps\/search\/(-?\d+\.\d+),\+?(-?\d+\.\d+)/)
-  if (searchMatch) return { lat: parseFloat(searchMatch[1]!), lng: parseFloat(searchMatch[2]!) }
-  // Format: q=lat,lng  (direct coordinate links)
-  const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
-  if (qMatch) return { lat: parseFloat(qMatch[1]!), lng: parseFloat(qMatch[2]!) }
-  // Format: !3dlat!4dlng  (place embed links)
-  const dMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
-  if (dMatch) return { lat: parseFloat(dMatch[1]!), lng: parseFloat(dMatch[2]!) }
+
+  const patterns = [
+    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    /\/maps\/(?:search|dir)\/(-?\d+(?:\.\d+)?),\+?(-?\d+(?:\.\d+)?)/,
+    /[?&](?:q|query|destination|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+  ]
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match) return { lat: parseFloat(match[1]!), lng: parseFloat(match[2]!) }
+  }
+
+  try {
+    const decoded = decodeURIComponent(url)
+    const plainCoords = decoded.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+    if (plainCoords) return { lat: parseFloat(plainCoords[1]!), lng: parseFloat(plainCoords[2]!) }
+  } catch {
+    // Ignore malformed encodings and fall through to the neutral state.
+  }
+
   return null
 }
 
@@ -98,7 +107,7 @@ const isPickup = computed(() => deliveryMethod.value === 'pickup')
 const resolvedMapsUrl  = ref<string | null>(null)
 const isResolvingUrl   = ref(false)
 
-const SHORT_URL_RE = /maps\.app\.goo\.gl/
+const SHORT_URL_RE = /maps\.app\.goo\.gl|goo\.gl\/maps/i
 
 watch(
   () => cart.customerInfo.mapsUrl,
@@ -116,7 +125,7 @@ watch(
 
 const effectiveMapsUrl = computed(() => {
   const raw = cart.customerInfo.mapsUrl ?? ''
-  if (SHORT_URL_RE.test(raw)) return resolvedMapsUrl.value ?? ''
+  if (SHORT_URL_RE.test(raw)) return resolvedMapsUrl.value ?? raw
   return raw
 })
 
@@ -246,6 +255,7 @@ function orderByWhatsApp() {
     `Dirección: ${cart.customerInfo.calle}`,
     cart.customerInfo.barrio ? `Barrio: ${cart.customerInfo.barrio}` : '',
     cart.customerInfo.referencia ? `Referencia: ${cart.customerInfo.referencia}` : '',
+    cart.customerInfo.mapsUrl ? `Google Maps: ${cart.customerInfo.mapsUrl}` : '',
   ].filter(Boolean)
 
   const deliveryLine = isPickup.value
@@ -546,16 +556,16 @@ function orderByWhatsApp() {
                 <div class="co-field__input">
                   <i class="fa-solid fa-map-pin"></i>
                   <input
-                    type="url"
+                    type="text"
                     :value="cart.customerInfo.mapsUrl"
-                    placeholder="https://maps.google.com/maps?q=..."
-                    inputmode="url"
+                    placeholder="Pega aquí tu link o ubicación de Google Maps"
+                    inputmode="text"
                     @input="onFieldInput('mapsUrl', ($event.target as HTMLInputElement).value)"
                   />
                 </div>
                 <span class="co-field__hint-text">
                   <i class="fa-solid fa-circle-info"></i>
-                  Abre Google Maps, presiona tu ubicación y copia el link de "Compartir"
+                  Pega cualquier link de Google Maps, ubicación compartida o dirección aproximada
                 </span>
 
                 <!-- Delivery cost preview -->
@@ -583,8 +593,8 @@ function orderByWhatsApp() {
                     <template v-else>
                       <i class="fa-solid fa-triangle-exclamation"></i>
                       <div class="co-delivery-preview__body">
-                        <strong>No pudimos leer ese link</strong>
-                        <span>Verifica el link o intenta compartir tu ubicación de nuevo</span>
+                        <strong>No pudimos calcular la distancia exacta</strong>
+                        <span>Igual puedes continuar; coordinaremos el envío con tu referencia</span>
                       </div>
                     </template>
                   </div>

@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8100/api'
+import { API_BASE_URL as API_BASE } from '@/config/api'
 
 export interface ScheduleConfig {
   timezone: string

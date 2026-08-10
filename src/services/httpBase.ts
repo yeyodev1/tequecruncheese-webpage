@@ -1,16 +1,14 @@
 import axios from 'axios'
 import type { AxiosResponse, AxiosRequestConfig } from 'axios'
+import { API_BASE_URL } from '@/config/api'
 
 class APIBase {
   private baseUrl: string
   private axiosInstance = axios.create()
 
   constructor() {
-    const raw = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8100/api'
-    const trimmed = raw.replace(/\/+$/, '')
-    this.baseUrl = trimmed.endsWith('/api') || /\/api\//.test(trimmed)
-      ? trimmed
-      : `${trimmed}/api`
+    // Resolved from the current host — see src/config/api.ts.
+    this.baseUrl = API_BASE_URL
     this.setupInterceptors()
   }
 

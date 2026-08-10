@@ -1,11 +1,18 @@
+// `@forward` re-exports the partials' variables to every file that loads this
+// one through vite's `@use "@/styles/index.scss" as *`. A plain `@use` would
+// keep them private to this file and break every component.
+@forward 'colorVariables.module.scss';
+@forward 'fonts.module.scss';
+
 @use "sass:color";
 @use "sass:math";
-
-@import 'colorVariables.module.scss';
-@import 'fonts.module.scss';
+@use "sass:meta";
+// Loaded again, unprefixed, so the rules further down can read the variables.
+@use 'colorVariables.module.scss' as *;
+@use 'fonts.module.scss' as *;
 
 @function _to-percent($value) {
-  @if type-of($value) == 'number' and unit($value) == '%' {
+  @if meta.type-of($value) == 'number' and math.unit($value) == '%' {
     @return $value;
   }
   @return $value * 1%;

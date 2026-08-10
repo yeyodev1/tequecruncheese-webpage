@@ -77,6 +77,8 @@ export interface PreparePaymentPayload {
   customerEmail: string
   customerInfo?: CustomerInfo
   deliveryCost?: number
+  /** ISO instant of the booked slot; omit for "as soon as possible". */
+  scheduledFor?: string
 }
 
 export interface TrackOrderResponse {
@@ -85,6 +87,7 @@ export interface TrackOrderResponse {
   total: number
   createdAt: string
   trackingToken?: string
+  scheduledFor?: string
 }
 
 export type OrderStatus =
@@ -113,6 +116,9 @@ export interface AdminOrder {
   facturaEmail?: string
   facturaRuc?: string
   deliveryCost?: number
+  deliveryKm?: number
+  deliveryMethod?: 'delivery' | 'pickup'
+  scheduledFor?: string
   deliveryAddress?: {
     calle: string
     barrio?: string

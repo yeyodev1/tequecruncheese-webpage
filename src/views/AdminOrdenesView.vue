@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
 import gsap from 'gsap'
 import { adminService } from '@/services/admin.service'
+import { formatSchedule, formatScheduleShort } from '@/services/schedule.service'
 import type { AdminOrder, OrderStatus } from '@/types'
 
 const router = useRouter()
@@ -236,6 +237,7 @@ function printOrder() {
 <div class="row"><span class="lbl">Pedido</span><span class="val">#${esc(o.trackingToken)}</span></div>
 <div class="row"><span class="lbl">Fecha</span><span class="val">${dateStr}</span></div>
 <div class="row"><span class="lbl">Estado</span><span class="val">${esc(statusLabel)}</span></div>
+${o.scheduledFor ? `<div class="row"><span class="lbl">Programado</span><span class="val"><b>${esc(formatSchedule(o.scheduledFor))}</b></span></div>` : ''}
 <hr>
 <div class="section-title">Cliente</div>
 ${o.customerName  ? `<div class="row"><span class="lbl">Nombre</span><span class="val">${esc(o.customerName)}</span></div>` : ''}
@@ -601,6 +603,10 @@ onBeforeUnmount(() => {
               <div v-if="order.customerName" class="kanban__card-name">
                 <i class="fa-solid fa-user"></i> {{ order.customerName }}
               </div>
+              <div v-if="order.scheduledFor" class="kanban__card-scheduled">
+                <i class="fa-regular fa-calendar-check"></i>
+                {{ formatScheduleShort(order.scheduledFor) }}
+              </div>
               <div class="kanban__card-meta">
                 <span class="kanban__card-total">${{ order.total.toFixed(2) }}</span>
                 <span class="kanban__card-items">{{ order.items.reduce((s: number, i) => s + i.cantidad, 0) }} item(s)</span>
@@ -786,6 +792,19 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="admin-drawer__body">
+
+              <!-- ── Scheduled slot (only for booked orders) ────────── -->
+              <div v-if="selectedOrder.scheduledFor" class="admin-drawer__scheduled">
+                <i class="fa-regular fa-calendar-check"></i>
+                <div>
+                  <span class="admin-drawer__scheduled-label">
+                    {{ selectedOrder.deliveryMethod === 'pickup' ? 'Retiro programado' : 'Entrega programada' }}
+                  </span>
+                  <span class="admin-drawer__scheduled-val">
+                    {{ formatSchedule(selectedOrder.scheduledFor) }}
+                  </span>
+                </div>
+              </div>
 
               <!-- ── Customer info ──────────────────────────────────── -->
               <div class="admin-drawer__section admin-drawer__section--card">
@@ -1430,6 +1449,22 @@ onBeforeUnmount(() => {
     gap: 0.3rem;
 
     i { font-size: 0.68rem; color: #bbb; }
+  }
+
+  &__card-scheduled {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    padding: 0.18rem 0.5rem;
+    border-radius: 9999px;
+    background: rgba($color-primary, 0.5);
+    color: $color-accent;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: capitalize;
+
+    i { font-size: 0.66rem; color: $color-secondary; }
   }
 
   &__card-meta {
@@ -2291,6 +2326,43 @@ onBeforeUnmount(() => {
     color: #777;
     font-size: 0.74rem;
     line-height: 1.35;
+  }
+
+  &__scheduled {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 1rem;
+    padding: 0.8rem 1rem;
+    border-radius: 0.75rem;
+    background: rgba($color-primary, 0.35);
+    border: 1.5px solid rgba($color-secondary, 0.45);
+
+    > i {
+      font-size: 1.1rem;
+      color: $color-secondary;
+    }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+    }
+  }
+
+  &__scheduled-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba($color-accent, 0.65);
+  }
+
+  &__scheduled-val {
+    font-family: $font-secondary;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: $color-accent;
+    text-transform: capitalize;
   }
 
   &__delivery-row td {

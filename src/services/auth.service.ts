@@ -33,6 +33,7 @@ export interface MyOrder {
   total: number
   createdAt: string
   payWithPayPhone?: string
+  scheduledFor?: string
 }
 
 class AuthService extends APIBase {

@@ -8,6 +8,7 @@ import { useModalStore } from '@/stores/modal'
 import { authService } from '@/services/auth.service'
 import { paymentService } from '@/services/payment.service'
 import { cloudImg } from '@/services/cloudinary'
+import { formatSchedule } from '@/services/schedule.service'
 import type { MyOrder, OrderFilter } from '@/services/auth.service'
 import type { TrackOrderResponse } from '@/types'
 
@@ -422,6 +423,12 @@ onMounted(() => {
                         {{ STATUS_LABELS[order.status] }}
                       </div>
 
+                      <!-- Scheduled slot -->
+                      <div v-if="order.scheduledFor" class="ocard__scheduled">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        {{ formatSchedule(order.scheduledFor) }}
+                      </div>
+
                       <!-- Items -->
                       <ul class="ocard__items">
                         <li v-for="item in order.items" :key="item.slug" class="ocard__item">
@@ -607,6 +614,11 @@ onMounted(() => {
                         <div v-else class="ocard__neg-banner">
                           <i :class="`fa-solid ${STATUS_ICON[order.status]}`"></i>
                           {{ STATUS_LABELS[order.status] }}
+                        </div>
+
+                        <div v-if="order.scheduledFor" class="ocard__scheduled">
+                          <i class="fa-regular fa-calendar-check"></i>
+                          {{ formatSchedule(order.scheduledFor) }}
                         </div>
 
                         <ul class="ocard__items">
@@ -1402,6 +1414,22 @@ onMounted(() => {
     font-weight: 400;
     font-size: 0.78rem;
     line-height: 1.3;
+  }
+
+  &__scheduled {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.6rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: $border-radius-pill;
+    background: rgba($color-primary, 0.45);
+    color: $color-accent;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: capitalize;
+
+    i { color: $color-secondary; font-size: 0.72rem; }
   }
 
   &__item-price {

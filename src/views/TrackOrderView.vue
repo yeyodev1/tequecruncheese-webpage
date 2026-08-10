@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { paymentService } from '@/services/payment.service'
+import { formatSchedule } from '@/services/schedule.service'
 import type { TrackOrderResponse } from '@/types'
 
 const route = useRoute()
@@ -122,6 +123,15 @@ onMounted(async () => {
         >
           <i class="fa-solid fa-circle-xmark"></i>
           {{ STATUS_LABELS[order.status] ?? order.status }}
+        </div>
+
+        <!-- Scheduled slot -->
+        <div v-if="order.scheduledFor" class="track-order__scheduled">
+          <i class="fa-regular fa-calendar-check"></i>
+          <div>
+            <strong>Pedido programado</strong>
+            <span>{{ formatSchedule(order.scheduledFor) }}</span>
+          </div>
         </div>
 
         <!-- Items table -->
@@ -332,6 +342,40 @@ onMounted(async () => {
     color: #999;
     font-size: 0.78rem;
     line-height: 1.3;
+  }
+
+  &__scheduled {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 0 0 1.25rem;
+    padding: 0.8rem 1rem;
+    border-radius: $border-radius-md;
+    background: rgba($color-primary, 0.3);
+    border: 1px solid rgba($color-secondary, 0.35);
+
+    > i {
+      font-size: 1.05rem;
+      color: $color-secondary;
+    }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.35;
+    }
+
+    strong {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: $color-accent;
+    }
+
+    span {
+      font-size: 0.82rem;
+      color: rgba($color-accent, 0.72);
+      text-transform: capitalize;
+    }
   }
   &__right  { text-align: right; }
 

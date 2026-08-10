@@ -5,7 +5,9 @@ import { useCartStore } from '@/stores/cart'
 import { paymentService } from '@/services/payment.service'
 import { productService } from '@/services/product.service'
 import { mapsService, type MapsQuote } from '@/services/maps.service'
+import { scheduleService, DEFAULT_SCHEDULE_CONFIG, type ScheduleConfig } from '@/services/schedule.service'
 import ProductDetailModal from '@/components/tienda/ProductDetailModal.vue'
+import SchedulePicker from '@/components/tienda/SchedulePicker.vue'
 import type { Product, FlavorSelection } from '@/types'
 
 const router = useRouter()
@@ -19,6 +21,8 @@ const showPicker = ref(false)
 onMounted(async () => {
   if (cart.isEmpty) { router.replace('/tienda'); return }
   try { products.value = await productService.list() } catch { /* ignore */ }
+  // Opening hours come from the API so the picker and the validator agree.
+  try { scheduleConfig.value = await scheduleService.config() } catch { /* defaults stand */ }
 })
 
 // Items that have hasFlavors but no selections yet
@@ -127,6 +131,20 @@ function getDeliveryCost(km: number): number | null {
 // ── Delivery method ────────────────────────────────────────────
 const deliveryMethod = ref<'delivery' | 'pickup'>('delivery')
 const isPickup = computed(() => deliveryMethod.value === 'pickup')
+
+// ── Scheduled orders ───────────────────────────────────────────
+const scheduleConfig = ref<ScheduleConfig>(DEFAULT_SCHEDULE_CONFIG)
+/** ISO instant of the booked slot; null means "as soon as possible". */
+const scheduledFor = ref<string | null>(null)
+
+const scheduledLabel = computed(() => {
+  if (!scheduledFor.value) return ''
+  return new Intl.DateTimeFormat('es-EC', {
+    timeZone: scheduleConfig.value.timezone,
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date(scheduledFor.value))
+})
 
 // ── Backend quote (authoritative) ──────────────────────────────
 // Every link goes to the backend: short links need a redirect follow, and long
@@ -272,6 +290,7 @@ async function checkout() {
         }),
       },
       ...(deliveryCost.value ? { deliveryCost: deliveryCost.value } : {}),
+      ...(scheduledFor.value ? { scheduledFor: scheduledFor.value } : {}),
     })
     window.location.href = result.payWithPayPhone
   } catch {
@@ -309,10 +328,16 @@ function orderByWhatsApp() {
       ? `Envío (${deliveryKm.value!.toFixed(1)} km): $${(deliveryCost.value as number).toFixed(2)}`
       : 'Envío: por coordinar'
 
+  const scheduleLine = scheduledFor.value
+    ? `📅 Programado para: ${scheduledLabel.value}`
+    : '⚡ Lo antes posible'
+
   const message = [
     '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
     '',
     ...lines,
+    '',
+    scheduleLine,
     '',
     `Subtotal: $${cart.totalPrice.toFixed(2)}`,
     deliveryLine,
@@ -537,6 +562,19 @@ function orderByWhatsApp() {
                 <strong>Retira en nuestro local</strong>
                 <span>Te avisamos cuando tu pedido esté listo</span>
               </div>
+            </div>
+
+            <!-- Scheduling -->
+            <div class="co-schedule">
+              <p class="co-schedule__title">
+                <i class="fa-regular fa-clock"></i>
+                ¿Cuándo lo quieres?
+              </p>
+              <SchedulePicker
+                v-model="scheduledFor"
+                :config="scheduleConfig"
+                :mode="deliveryMethod"
+              />
             </div>
 
             <!-- Delivery address fields (hidden for pickup) -->
@@ -829,6 +867,14 @@ function orderByWhatsApp() {
                 </div>
               </li>
             </ul>
+
+            <div v-if="scheduledFor" class="co-summary__schedule">
+              <i class="fa-regular fa-calendar-check"></i>
+              <div>
+                <strong>{{ isPickup ? 'Retiro' : 'Entrega' }} programada</strong>
+                <span>{{ scheduledLabel }}</span>
+              </div>
+            </div>
 
             <div class="co-summary__totals">
               <div class="co-summary__row">
@@ -1230,6 +1276,24 @@ $bg: #f8f6f3;
       border-color: #ccc;
       background: #f5f5f5;
     }
+  }
+}
+
+// ── Scheduling block (between delivery method and address) ──────
+.co-schedule {
+  margin-top: 1.25rem;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.7rem;
+    font-family: $font-secondary;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: $color-accent;
+
+    i { color: $color-secondary; }
   }
 }
 
@@ -1706,6 +1770,39 @@ $bg: #f8f6f3;
     color: $accent;
     flex-shrink: 0;
     white-space: nowrap;
+  }
+
+  &__schedule {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.85rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: $border-radius-md;
+    background: rgba($color-primary, 0.28);
+
+    > i {
+      color: $color-secondary;
+      font-size: 0.95rem;
+    }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+    }
+
+    strong {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: $color-accent;
+    }
+
+    span {
+      font-size: 0.78rem;
+      color: rgba($color-accent, 0.7);
+      text-transform: capitalize;
+    }
   }
 
   &__totals {

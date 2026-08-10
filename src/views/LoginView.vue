@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import BrandLogo from '@/components/BrandLogo.vue'
 import gsap from 'gsap'
 
 const router = useRouter()
@@ -61,7 +62,7 @@ onMounted(() => {
   )
   // Logo bounces in
   .fromTo(
-    '.lv__logo',
+    '.lv__logo-wrap',
     { scale: 0.6, opacity: 0 },
     { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' },
     '-=0.5',
@@ -93,13 +94,7 @@ onMounted(() => {
       <span class="lv__blob lv__blob--3"></span>
 
       <div class="lv__brand-inner">
-        <router-link to="/" class="lv__logo-wrap">
-          <img
-            class="lv__logo"
-            src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-            alt="TequeCruncheese"
-          />
-        </router-link>
+        <BrandLogo class="lv__logo-wrap" variant="mark" :height="68" />
 
         <h1 class="lv__brand-name">Tequecruncheese</h1>
         <p class="lv__brand-tagline">
@@ -127,13 +122,10 @@ onMounted(() => {
     <div class="lv__form-panel">
       <div class="lv__form-inner">
         <!-- Mobile brand header -->
+        <!-- The wordmark already carries the name, so the text beside the
+             square mark was saying it twice. -->
         <div class="lv__mobile-brand">
-          <img
-            class="lv__mobile-logo"
-            src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-            alt="TequeCruncheese"
-          />
-          <span class="lv__mobile-name">Tequecruncheese</span>
+          <BrandLogo variant="long" :height="38" />
         </div>
 
         <div class="lv__heading">
@@ -307,13 +299,7 @@ onMounted(() => {
 }
 
 .lv__logo-wrap {
-  display: inline-block;
   text-decoration: none;
-}
-
-.lv__logo {
-  height: 68px;
-  width: auto;
   filter: brightness(1.05);
   transition: transform 0.3s ease;
 
@@ -402,16 +388,6 @@ onMounted(() => {
   }
 }
 
-.lv__mobile-logo {
-  height: 40px;
-  width: auto;
-}
-
-.lv__mobile-name {
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: $color-accent;
-}
 
 // ── Heading ───────────────────────────────────────────────────────
 .lv__heading {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { authService } from '@/services/auth.service'
+import BrandLogo from '@/components/BrandLogo.vue'
 
 const email = ref('')
 const loading = ref(false)
@@ -31,11 +32,7 @@ async function handleSubmit() {
   <div class="recuperar-view">
     <div class="recuperar-view__card">
       <div class="recuperar-view__brand">
-        <img
-          class="recuperar-view__logo"
-          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-          alt="TequeCruncheese"
-        />
+        <BrandLogo class="recuperar-view__logo" variant="mark" :height="52" />
         <h1 class="recuperar-view__title">Recuperar contraseña</h1>
         <p class="recuperar-view__subtitle">Te enviamos un enlace a tu correo</p>
       </div>
@@ -102,8 +99,6 @@ async function handleSubmit() {
   }
 
   &__logo {
-    height: 52px;
-    width: auto;
     display: block;
     margin: 0 auto 0.25rem;
   }

@@ -5,7 +5,7 @@ import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { useModalStore } from '@/stores/modal'
 
-import logo from '@/assets/logo/logo.png'
+import BrandLogo from '@/components/BrandLogo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -152,12 +152,10 @@ onUnmounted(() => {
     <div class="header__container">
 
       <!-- Logo -->
-      <RouterLink to="/" class="header__logo">
-        <img
-          :src="logo"
-          alt="TequeCruncheese"
-        />
-      </RouterLink>
+      <!-- Height is bound rather than styled: scoped CSS here cannot reach
+           the <img> inside BrandLogo, only its root element. -->
+      <BrandLogo class="header__logo" variant="long" :height="isScrolled ? 36 : 46" />
+
 
       <!-- Desktop Nav -->
       <nav class="header__nav">
@@ -254,12 +252,12 @@ onUnmounted(() => {
 
         <!-- Drawer top: logo + close -->
         <div class="header__mobile-drawer-top">
-          <RouterLink to="/" class="header__mobile-drawer-logo" @click="closeMobileMenu">
-            <img
-              src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-              alt="TequeCruncheese"
-            />
-          </RouterLink>
+          <BrandLogo
+            class="header__mobile-drawer-logo"
+            variant="mark"
+            :height="32"
+            @click="closeMobileMenu"
+          />
           <button class="header__mobile-close" @click="closeMobileMenu" aria-label="Cerrar menú">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -375,21 +373,13 @@ onUnmounted(() => {
   }
 
   // ── Logo ────────────────────────────────────────────────────
+  // Sizing lives on the BrandLogo `height` prop; only layout is set here.
   &__logo {
     display: flex;
     align-items: center;
     text-decoration: none;
     flex-shrink: 0;
-
-    img {
-      height: 46px;
-      width: auto;
-      transition: height 0.3s ease;
-    }
-  }
-
-  &--scrolled &__logo img {
-    height: 36px;
+    transition: height 0.3s ease;
   }
 
   // ── Desktop nav ─────────────────────────────────────────────
@@ -868,10 +858,7 @@ onUnmounted(() => {
   }
 
   &__mobile-drawer-logo {
-    img {
-      height: 32px;
-      width: auto;
-    }
+    flex-shrink: 0;
   }
 
   &__mobile-close {

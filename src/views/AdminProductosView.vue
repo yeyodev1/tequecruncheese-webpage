@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
 import { productService, type ProductPayload } from '@/services/product.service'
 import { adminService } from '@/services/admin.service'
+import BrandLogo from '@/components/BrandLogo.vue'
 import type { Product } from '@/types'
 
 const router = useRouter()
@@ -365,11 +366,7 @@ onMounted(() => {
     <!-- ── Header ─────────────────────────────────────────────────────────── -->
     <header class="ap__header">
       <div class="ap__header-left">
-        <img
-          class="ap__logo"
-          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-          alt="TequeCruncheese"
-        />
+        <BrandLogo class="ap__logo" variant="mark" :height="36" to="/admin/dashboard" />
         <div>
           <h1>Panel de Administración</h1>
           <p>Tequecruncheese</p>
@@ -1063,11 +1060,11 @@ onMounted(() => {
     flex: 1;
   }
 
+  // Sizing lives on the BrandLogo `height` prop.
   &__logo {
-    height: 36px;
-    width: 36px;
+    flex-shrink: 0;
     border-radius: 8px;
-    object-fit: cover;
+    overflow: hidden;
   }
 
   &__nav {

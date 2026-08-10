@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-const logoSmall = 'https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small'
+import BrandLogo from '@/components/BrandLogo.vue'
 
 const visible = ref(true)
 const hiding  = ref(false)
@@ -35,7 +35,7 @@ onMounted(() => {
       <!-- Center content -->
       <div class="app-loader__content">
         <div class="app-loader__logo-wrap">
-          <img :src="logoSmall" alt="TequeCruncheese" class="app-loader__logo" />
+          <BrandLogo class="app-loader__logo" variant="mark" :height="80" :to="null" />
           <div class="app-loader__ring"></div>
           <div class="app-loader__ring app-loader__ring--2"></div>
         </div>
@@ -98,10 +98,8 @@ onMounted(() => {
     margin-bottom: $spacing-md;
   }
 
+  // Size comes from the BrandLogo `height` prop; the pulse rides the wrapper.
   &__logo {
-    width: 80px;
-    height: 80px;
-    object-fit: contain;
     animation: logoPulse 2s ease-in-out infinite;
     position: relative;
     z-index: 2;

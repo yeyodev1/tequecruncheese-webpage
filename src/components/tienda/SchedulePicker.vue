@@ -187,7 +187,7 @@ defineExpose({ stopTicker: () => clearInterval(ticker) })
         <span class="sched__mode-icon"><i class="fa-regular fa-calendar-check"></i></span>
         <span class="sched__mode-text">
           <strong>Programar</strong>
-          <small v-if="days.length">Elige día y hora</small>
+          <small v-if="days.length">Elige día y hora · solo tarjeta</small>
           <small v-else>Sin horarios disponibles</small>
         </span>
       </button>
@@ -236,6 +236,13 @@ defineExpose({ stopTicker: () => clearInterval(ticker) })
             <span>{{ selectionLabel }}</span>
           </div>
         </div>
+
+        <!-- The text is one span: as bare flex items, each run would pick up
+             the container's gap and drift away from the bold phrase. -->
+        <p class="sched__card-only">
+          <i class="fa-solid fa-credit-card"></i>
+          <span>Los pedidos programados se pagan <strong>solo con tarjeta</strong>. El pago reserva tu horario.</span>
+        </p>
 
       </div>
     </Transition>
@@ -460,6 +467,23 @@ defineExpose({ stopTicker: () => clearInterval(ticker) })
       color: $alert-success;
       font-size: 1rem;
     }
+  }
+
+  &__card-only {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: rgba($color-accent, 0.7);
+
+    i {
+      margin-top: 0.15rem;
+      color: $color-secondary;
+    }
+
+    strong { color: $color-accent; font-weight: 700; }
   }
 
   &__confirm-body {

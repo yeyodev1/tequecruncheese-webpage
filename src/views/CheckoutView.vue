@@ -303,6 +303,9 @@ async function checkout() {
 const WHATSAPP_NUMBER = '593963237880'
 
 function orderByWhatsApp() {
+  // A booked slot is held by the payment, so WhatsApp is not an option for it.
+  if (scheduledFor.value) return
+
   const lines = cart.items.map(item => {
     let line = `• ${item.cantidad}x ${item.nombre} — $${(item.precio * item.cantidad).toFixed(2)}`
     if (item.flavorSelections?.length) {
@@ -328,9 +331,8 @@ function orderByWhatsApp() {
       ? `Envío (${deliveryKm.value!.toFixed(1)} km): $${(deliveryCost.value as number).toFixed(2)}`
       : 'Envío: por coordinar'
 
-  const scheduleLine = scheduledFor.value
-    ? `📅 Programado para: ${scheduledLabel.value}`
-    : '⚡ Lo antes posible'
+  // Always immediate: the guard above rules out scheduled orders here.
+  const scheduleLine = '⚡ Lo antes posible'
 
   const message = [
     '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
@@ -814,17 +816,37 @@ function orderByWhatsApp() {
               </button>
 
               <div class="co-pay-divider">
-                <span>o también puedes</span>
+                <span>{{ scheduledFor ? 'no disponible al programar' : 'o también puedes' }}</span>
               </div>
 
-              <!-- WhatsApp -->
-              <button class="co-pay-btn co-pay-btn--whatsapp" @click="orderByWhatsApp">
+              <!-- WhatsApp — blocked for scheduled orders, which must be prepaid -->
+              <button
+                class="co-pay-btn co-pay-btn--whatsapp"
+                :class="{ 'co-pay-btn--blocked': scheduledFor }"
+                :disabled="!!scheduledFor"
+                @click="orderByWhatsApp"
+              >
                 <i class="fa-brands fa-whatsapp"></i>
                 <span>
                   <strong>Continuar por WhatsApp</strong>
-                  <small>Te contactamos para coordinar</small>
+                  <small v-if="scheduledFor">Los pedidos programados se pagan con tarjeta</small>
+                  <small v-else>Te contactamos para coordinar</small>
                 </span>
               </button>
+
+              <div v-if="scheduledFor" class="co-pay-locked">
+                <i class="fa-solid fa-lock"></i>
+                <div>
+                  <strong>Los pedidos programados se pagan solo con tarjeta</strong>
+                  <span>
+                    Tu horario ({{ scheduledLabel }}) queda reservado al confirmar el pago.
+                    ¿Prefieres coordinar por WhatsApp? Elige
+                    <button type="button" class="co-pay-locked__link" @click="scheduledFor = null">
+                      «Lo antes posible»
+                    </button>.
+                  </span>
+                </div>
+              </div>
 
             </div>
 
@@ -1569,6 +1591,64 @@ $bg: #f8f6f3;
     color: #bbb;
     font-weight: 600;
     white-space: nowrap;
+  }
+}
+
+// ── Scheduled orders are card-only: WhatsApp is visibly locked ──
+.co-pay-btn--blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+
+  &:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+.co-pay-locked {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  background: rgba($color-primary, 0.25);
+  border: 1px solid rgba($color-secondary, 0.35);
+
+  > i {
+    margin-top: 0.15rem;
+    color: $color-secondary;
+    font-size: 0.9rem;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  strong {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: $color-accent;
+  }
+
+  span {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgba($color-accent, 0.75);
+  }
+
+  &__link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: $color-secondary;
+    text-decoration: underline;
+    cursor: pointer;
   }
 }
 

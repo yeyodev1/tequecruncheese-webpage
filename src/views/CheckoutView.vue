@@ -7,6 +7,7 @@ import { productService } from '@/services/product.service'
 import { scheduleService, DEFAULT_SCHEDULE_CONFIG, type ScheduleConfig } from '@/services/schedule.service'
 import { useDeliveryQuote } from '@/composables/useDeliveryQuote'
 import { useCheckoutValidation } from '@/composables/useCheckoutValidation'
+import BrandLogo from '@/components/BrandLogo.vue'
 import ProductDetailModal from '@/components/tienda/ProductDetailModal.vue'
 import FlavorAlert from '@/components/checkout/FlavorAlert.vue'
 import CustomerSection from '@/components/checkout/CustomerSection.vue'
@@ -200,9 +201,7 @@ function orderByWhatsApp() {
           <i class="fa-solid fa-arrow-left"></i>
           Volver a la tienda
         </button>
-        <div class="co-header__brand">
-          <span class="co-header__brand-name">Tequecruncheese</span>
-        </div>
+        <BrandLogo class="co-header__brand" variant="long" :height="34" />
         <div class="co-header__space"></div>
       </div>
     </header>
@@ -344,14 +343,6 @@ $bg: #f8f6f3;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-  }
-
-  &__brand-name {
-    font-size: 1rem;
-    font-weight: 900;
-    color: $gold;
-    letter-spacing: -0.02em;
-    font-family: inherit;
   }
 
   &__space { width: 120px; }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import BrandLogo from '@/components/BrandLogo.vue'
 import { authService } from '@/services/auth.service'
 
 const router = useRouter()
@@ -40,11 +41,7 @@ async function handleSubmit() {
   <div class="reset-view">
     <div class="reset-view__card">
       <div class="reset-view__brand">
-        <img
-          class="reset-view__logo"
-          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-          alt="TequeCruncheese"
-        />
+        <BrandLogo class="reset-view__logo" variant="mark" :height="52" />
         <h1 class="reset-view__title">Nueva contraseña</h1>
         <p class="reset-view__subtitle">Elige una contraseña segura</p>
       </div>
@@ -125,8 +122,6 @@ async function handleSubmit() {
   }
 
   &__logo {
-    height: 52px;
-    width: auto;
     display: block;
     margin: 0 auto 0.25rem;
   }

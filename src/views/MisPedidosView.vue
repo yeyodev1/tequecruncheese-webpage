@@ -9,6 +9,7 @@ import { authService } from '@/services/auth.service'
 import { paymentService } from '@/services/payment.service'
 import { cloudImg } from '@/services/cloudinary'
 import { formatSchedule } from '@/services/schedule.service'
+import BrandLogo from '@/components/BrandLogo.vue'
 import type { MyOrder, OrderFilter } from '@/services/auth.service'
 import type { TrackOrderResponse } from '@/types'
 
@@ -474,11 +475,7 @@ onMounted(() => {
             <div class="mp-guest__promo" :style="{ backgroundImage: `url(${GUEST_BG})` }">
               <div class="mp-guest__promo-overlay"></div>
               <div class="mp-guest__promo-content">
-                <img
-                  class="mp-guest__logo"
-                  src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-                  alt="Tequecruncheese"
-                />
+                <BrandLogo class="mp-guest__logo" variant="mark" :height="48" :to="null" />
                 <h2 class="mp-guest__promo-title">¿Ya tienes cuenta?</h2>
                 <p class="mp-guest__promo-sub">
                   Inicia sesión para ver todos tus pedidos al instante, sin buscar por correo.
@@ -1527,8 +1524,7 @@ onMounted(() => {
 }
 
 .mp-guest__logo {
-  height: 48px;
-  width: auto;
+  align-self: flex-start;
 }
 
 .mp-guest__promo-title {

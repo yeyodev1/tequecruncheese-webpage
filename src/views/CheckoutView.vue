@@ -7,6 +7,7 @@ import { productService } from '@/services/product.service'
 import { scheduleService, DEFAULT_SCHEDULE_CONFIG, type ScheduleConfig } from '@/services/schedule.service'
 import { useDeliveryQuote } from '@/composables/useDeliveryQuote'
 import { useCheckoutValidation } from '@/composables/useCheckoutValidation'
+import { openWhatsAppOrder } from '@/composables/useWhatsAppOrder'
 import BrandLogo from '@/components/BrandLogo.vue'
 import ProductDetailModal from '@/components/tienda/ProductDetailModal.vue'
 import FlavorAlert from '@/components/checkout/FlavorAlert.vue'
@@ -51,6 +52,24 @@ function openFlavorPicker(slug: string) {
 function onFlavorAdded() {
   showPicker.value = false
   pickerProduct.value = null
+}
+
+/**
+ * Add a suggested product without leaving the checkout.
+ * Flavor boxes cannot be added blind — they open the picker instead, which is
+ * the same gate the "falta elegir sabores" alert enforces.
+ */
+function addSuggestion(product: Product) {
+  if (product.hasFlavors && product.flavors?.some(f => f.isActive)) {
+    pickerProduct.value = product
+    showPicker.value = true
+    return
+  }
+  cart.addItem(
+    { slug: product.slug, nombre: product.nombre, precio: product.precio },
+    undefined,
+    false, // don't pop the drawer open over the checkout
+  )
 }
 
 // ── Delivery ──────────────────────────────────────────────
@@ -135,60 +154,19 @@ async function checkout() {
 }
 
 // ── WhatsApp ──────────────────────────────────────────────
-const WHATSAPP_NUMBER = '593963237880'
-
 function orderByWhatsApp() {
   // A booked slot is held by the payment, so WhatsApp is not an option for it.
   if (scheduledFor.value) return
 
-  const lines = cart.items.map(item => {
-    let line = `• ${item.cantidad}x ${item.nombre} — $${(item.precio * item.cantidad).toFixed(2)}`
-    if (item.flavorSelections?.length) {
-      const detail = item.flavorSelections.map(s => `${s.cantidad}× ${s.nombre}`).join(', ')
-      line += `\n  Sabores: ${detail}`
-    }
-    return line
+  openWhatsAppOrder({
+    items: cart.items,
+    customerInfo: cart.customerInfo,
+    subtotal: cart.totalPrice,
+    total: grandTotal.value,
+    isPickup: isPickup.value,
+    deliveryKm: deliveryKm.value,
+    deliveryCost: deliveryCost.value,
   })
-
-  const formInfo = [
-    `Nombre: ${cart.customerInfo.nombre}`,
-    `Cédula: ${cart.customerInfo.cedula}`,
-    `Email: ${cart.customerInfo.email}`,
-    `Tel: ${cart.customerInfo.telefono}`,
-    `Dirección: ${cart.customerInfo.calle}`,
-    cart.customerInfo.barrio ? `Barrio: ${cart.customerInfo.barrio}` : '',
-    cart.customerInfo.referencia ? `Referencia: ${cart.customerInfo.referencia}` : '',
-    cart.customerInfo.mapsUrl ? `Google Maps: ${cart.customerInfo.mapsUrl}` : '',
-  ].filter(Boolean)
-
-  const deliveryLine = isPickup.value
-    ? '🏪 Retiro en tienda (sin costo de envío)'
-    : deliveryCost.value
-      ? `Envío (${deliveryKm.value!.toFixed(1)} km): $${deliveryCost.value.toFixed(2)}`
-      : 'Envío: por coordinar'
-
-  const message = [
-    '¡Hola Tequecruncheese! Quisiera hacer el siguiente pedido:',
-    '',
-    ...lines,
-    '',
-    '⚡ Lo antes posible',
-    '',
-    `Subtotal: $${cart.totalPrice.toFixed(2)}`,
-    deliveryLine,
-    `*Total: $${grandTotal.value.toFixed(2)}*`,
-    '',
-    '---',
-    ...formInfo,
-    '',
-    '¡Gracias!',
-  ].join('\n')
-
-  window.open(
-    `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`,
-    '_blank',
-    'noopener',
-  )
 }
 </script>
 
@@ -262,6 +240,7 @@ function orderByWhatsApp() {
         </div>
 
         <OrderSummary
+          :products="products"
           :is-pickup="isPickup"
           :delivery-km="deliveryKm"
           :delivery-cost="deliveryCost"
@@ -269,6 +248,7 @@ function orderByWhatsApp() {
           :scheduled-for="scheduledFor"
           :scheduled-label="scheduledLabel"
           @edit="router.push('/tienda')"
+          @add="addSuggestion"
         />
 
       </div>

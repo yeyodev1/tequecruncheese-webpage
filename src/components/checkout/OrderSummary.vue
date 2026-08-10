@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useCartStore } from '@/stores/cart'
-import type { FlavorSelection } from '@/types'
+import OrderSummaryItem from './OrderSummaryItem.vue'
+import CartSuggestions from './CartSuggestions.vue'
+import type { Product } from '@/types'
 
 defineProps<{
   isPickup: boolean
@@ -9,15 +11,13 @@ defineProps<{
   grandTotal: number
   scheduledFor: string | null
   scheduledLabel: string
+  /** Used to look up each line's photo and to build the suggestions. */
+  products: Product[]
 }>()
 
-const emit = defineEmits<{ edit: [] }>()
+const emit = defineEmits<{ edit: []; add: [product: Product] }>()
 
 const cart = useCartStore()
-
-function flavorSummary(selections: FlavorSelection[]): string {
-  return selections.map(s => `${s.cantidad}× ${s.nombre}`).join(', ')
-}
 </script>
 
 <template>
@@ -29,24 +29,15 @@ function flavorSummary(selections: FlavorSelection[]): string {
       </h3>
 
       <ul class="co-summary__list">
-        <li v-for="item in cart.items" :key="item.slug" class="co-summary__item">
-          <div class="co-summary__item-body">
-            <div class="co-summary__item-info">
-              <span class="co-summary__item-qty">{{ item.cantidad }}×</span>
-              <div class="co-summary__item-text">
-                <span class="co-summary__item-name">{{ item.nombre }}</span>
-                <span v-if="item.flavorSelections?.length" class="co-summary__item-flavors">
-                  <i class="fa-solid fa-sliders"></i>
-                  {{ flavorSummary(item.flavorSelections) }}
-                </span>
-              </div>
-            </div>
-            <span class="co-summary__item-price">
-              ${{ (item.precio * item.cantidad).toFixed(2) }}
-            </span>
-          </div>
-        </li>
+        <OrderSummaryItem
+          v-for="item in cart.items"
+          :key="item.slug"
+          :item="item"
+          :products="products"
+        />
       </ul>
+
+      <CartSuggestions :products="products" @add="emit('add', $event)" />
 
       <div v-if="scheduledFor" class="co-summary__schedule">
         <i class="fa-regular fa-calendar-check"></i>
@@ -104,6 +95,9 @@ $accent: #572612;
     // `hidden` would make them scroll containers and disable this.
     position: sticky;
     top: 80px;
+    // Long carts plus suggestions can outgrow the viewport; scroll inside.
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
   }
 
   &__inner {
@@ -138,70 +132,6 @@ $accent: #572612;
     display: flex;
     flex-direction: column;
     border-top: 1px solid #f0ede8;
-  }
-
-  &__item { border-bottom: 1px solid #f0ede8; }
-
-  &__item-body {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.75rem 0;
-  }
-
-  &__item-info {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__item-qty {
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: rgba($accent, 0.45);
-    flex-shrink: 0;
-    margin-top: 0.1rem;
-  }
-
-  &__item-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    min-width: 0;
-  }
-
-  &__item-name {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: $accent;
-    line-height: 1.3;
-  }
-
-  &__item-flavors {
-    font-size: 0.72rem;
-    color: #999;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-
-    i {
-      font-size: 0.65rem;
-      flex-shrink: 0;
-    }
-  }
-
-  &__item-price {
-    font-size: 0.875rem;
-    font-weight: 800;
-    color: $accent;
-    flex-shrink: 0;
-    white-space: nowrap;
   }
 
   &__schedule {

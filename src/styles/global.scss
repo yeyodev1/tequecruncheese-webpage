@@ -1,1 +1,3 @@
-// Global styles are now handled in index.scss and injected via vite.config.ts
+// Loaded once from main.ts. Everything that emits CSS lives in index.scss;
+// tokens are injected per component by vite (see vite.config.ts).
+@use 'index.scss';

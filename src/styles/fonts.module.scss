@@ -1,9 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap');
-
-:root {
-  --font-base: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
-}
+// Font tokens only — no CSS output.
+//
+// This file is pulled into every component through the token injection, so the
+// webfont @import and the :root custom properties live in index.scss instead;
+// duplicating them per component would ship the same @import a dozen times.
 
 $font-principal: var(--font-base);
 $font-secondary: var(--font-heading);

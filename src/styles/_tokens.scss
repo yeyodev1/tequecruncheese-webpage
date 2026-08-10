@@ -1,0 +1,97 @@
+// Design tokens: variables, functions and mixins ONLY.
+//
+// This file is injected into every SCSS block by vite's `additionalData`, so
+// it must emit no CSS of its own. Anything that produces rules (the reset,
+// html/body, .btn, the font @import) lives in index.scss, which main.ts loads
+// exactly once — otherwise every component ships another copy of it.
+
+@forward 'colorVariables.module.scss';
+@forward 'fonts.module.scss';
+
+@use "sass:color";
+@use "sass:math";
+@use "sass:meta";
+// Loaded unprefixed as well, so the mixins below can read the tokens.
+@use 'colorVariables.module.scss' as *;
+@use 'fonts.module.scss' as *;
+
+@function _to-percent($value) {
+  @if meta.type-of($value) == 'number' and math.unit($value) == '%' {
+    @return $value;
+  }
+  @return $value * 1%;
+}
+
+@function lighten($c, $amount, $method: 'adjust') {
+  $pct: _to-percent($amount);
+  @if $method == 'scale' {
+    @return color.scale($c, $lightness: $pct);
+  }
+  @return color.adjust($c, $lightness: $pct);
+}
+
+@function darken($c, $amount, $method: 'adjust') {
+  $pct: _to-percent($amount);
+  @if $method == 'scale' {
+    @return color.scale($c, $lightness: -$pct);
+  }
+  @return color.adjust($c, $lightness: -$pct);
+}
+
+// Spacing (Mobile First)
+$spacing-xs: 0.5rem;
+$spacing-sm: 1rem;
+$spacing-md: 1.5rem;
+$spacing-lg: 2rem;
+$spacing-xl: 3rem;
+$spacing-xxl: 5rem;
+
+// Breakpoints
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+
+// Borders & Radii
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 16px;
+$border-radius-xl: 24px;
+$border-radius-pill: 9999px;
+
+// Z-index
+$z-index-nav: 1000;
+$z-index-modal: 2000;
+$z-index-toast: 3000;
+
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == 'sm' { @media (min-width: $breakpoint-sm) { @content; } }
+  @else if $breakpoint == 'md' { @media (min-width: $breakpoint-md) { @content; } }
+  @else if $breakpoint == 'lg' { @media (min-width: $breakpoint-lg) { @content; } }
+  @else if $breakpoint == 'xl' { @media (min-width: $breakpoint-xl) { @content; } }
+}
+
+@mixin glass($opacity: 0.7, $blur: 12px, $border-color: rgba(255, 255, 255, 0.2), $bg-color: rgba(255, 255, 255, 0.7)) {
+  background: $bg-color;
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid $border-color;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+@mixin heading-1 {
+  font-family: $font-secondary;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  @include respond-to('md') { font-size: 4rem; }
+}
+
+@mixin heading-2 {
+  font-family: $font-secondary;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  @include respond-to('md') { font-size: 3rem; }
+}

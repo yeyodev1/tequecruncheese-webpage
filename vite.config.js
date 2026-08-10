@@ -6,7 +6,9 @@ export default defineConfig({
     css: {
         preprocessorOptions: {
             scss: {
-                additionalData: `@use "@/styles/index.scss" as *;`,
+                // Tokens only — this is prepended to every SCSS block, so it must not
+                // emit CSS. The global stylesheet is loaded once from main.ts.
+                additionalData: `@use "@/styles/tokens" as *;`,
             },
         },
     },

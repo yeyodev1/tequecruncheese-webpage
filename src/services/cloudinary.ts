@@ -87,6 +87,29 @@ export function cloudImg(filename: string, opts: CloudinaryOptions = {}): string
 }
 
 /**
+ * Inserta transformaciones en una URL de Cloudinary ya existente.
+ *
+ * Las imágenes de producto llegan del backend como URLs completas, sin
+ * transformar: mostrarlas en una miniatura de 56px descargaba el original.
+ * Devuelve la URL tal cual si no es de Cloudinary, para no romper nada.
+ */
+export function cloudThumb(url: string | undefined | null, width: number): string {
+  if (!url) return ''
+  const marker = '/image/upload/'
+  const at = url.indexOf(marker)
+  if (at === -1) return url
+
+  const head = url.slice(0, at + marker.length)
+  let tail = url.slice(at + marker.length)
+
+  // Drop any transform segment already present so ours is the only one.
+  const first = tail.split('/')[0] ?? ''
+  if (/^[a-z]{1,3}_[^/]+/.test(first)) tail = tail.slice(first.length + 1)
+
+  return `${head}f_auto,q_auto,w_${width},h_${width},c_fill/${tail}`
+}
+
+/**
  * Genera srcset para imágenes responsive.
  * @param filename - Nombre del archivo original
  * @param widths   - Array de anchos en px (e.g. [400, 800, 1200])

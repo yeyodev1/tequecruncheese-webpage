@@ -2,6 +2,7 @@
 import { ref, watch, nextTick } from 'vue'
 import gsap from 'gsap'
 import { cloudImg, CLOUD_IDS } from '@/services/cloudinary'
+import BrandLogo from '@/components/BrandLogo.vue'
 
 const props = defineProps({
   isOpen: {
@@ -11,8 +12,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
-
-const logoSmall = cloudImg('logo-small.png')
 
 // Build gallery from Cloudinary — no local blobs downloaded
 const allImages = Object.keys(CLOUD_IDS)
@@ -115,7 +114,7 @@ const close = () => {
         <div v-if="isLoading" class="gallery-loader">
           <div class="gallery-loader__inner">
             <div class="gallery-loader__logo-wrap">
-              <img :src="logoSmall" alt="TequeCruncheese" class="gallery-loader__logo" />
+              <BrandLogo class="gallery-loader__logo" variant="mark" :height="72" :to="null" />
               <div class="gallery-loader__ring"></div>
               <div class="gallery-loader__ring gallery-loader__ring--2"></div>
             </div>
@@ -385,10 +384,8 @@ const close = () => {
     margin-bottom: 8px;
   }
 
+  // Size comes from the BrandLogo `height` prop.
   &__logo {
-    width: 72px;
-    height: 72px;
-    object-fit: contain;
     position: relative;
     z-index: 2;
     animation: glPulse 2s ease-in-out infinite;

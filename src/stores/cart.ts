@@ -72,7 +72,10 @@ export const useCartStore = defineStore('cart', {
     },
 
     setCustomerInfo(info: Partial<CustomerInfo>) {
-      this.customerInfo = { ...this.customerInfo, ...info }
+      // Mutate in place rather than replacing the object: composables and
+      // `toRef` hold on to this reference, and swapping it leaves them
+      // reading a detached copy that never updates again.
+      Object.assign(this.customerInfo, info)
     },
 
     openCart() {

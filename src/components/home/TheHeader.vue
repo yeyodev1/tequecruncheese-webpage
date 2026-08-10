@@ -379,7 +379,14 @@ onUnmounted(() => {
     align-items: center;
     text-decoration: none;
     flex-shrink: 0;
-    transition: height 0.3s ease;
+    transition: height 0.3s ease, filter 0.3s ease;
+    // Before scrolling the header is transparent over the hero collage, so
+    // the mark can land on a dark photo. A soft shadow keeps its edges.
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.28));
+  }
+
+  &--scrolled &__logo {
+    filter: none;
   }
 
   // ── Desktop nav ─────────────────────────────────────────────

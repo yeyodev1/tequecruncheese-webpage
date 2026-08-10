@@ -255,6 +255,23 @@ const formValid = computed(() => {
   return base && facturaRucValid.value && facturaEmailValid.value
 })
 
+/** Names what is still missing, so the disabled button explains itself. */
+const missingFieldsLabel = computed(() => {
+  const missing: string[] = []
+  if (!nombreValid.value) missing.push('nombre')
+  if (!cedulaValid.value) missing.push('cédula')
+  if (!emailValid.value) missing.push('correo')
+  if (!telefonoValid.value) missing.push('teléfono')
+  if (!isPickup.value && !calleValid.value) missing.push('dirección')
+  if (quiereFactura.value && !facturaEmailValid.value) missing.push('correo de factura')
+  if (quiereFactura.value && !facturaRucValid.value) missing.push('RUC / cédula')
+
+  if (!missing.length) return 'Revisa los campos marcados'
+  if (missing.length === 1) return `Falta tu ${missing[0]}`
+  const last = missing.pop()
+  return `Faltan: ${missing.join(', ')} y ${last}`
+})
+
 function onFieldInput(field: keyof typeof cart.customerInfo, value: string) {
   cart.setCustomerInfo({ [field]: value })
   if (field === 'email') cart.setEmail(value)
@@ -805,6 +822,15 @@ function orderByWhatsApp() {
                     <small>Configura tu caja arriba</small>
                   </span>
                 </template>
+                <!-- A greyed-out button with a price on it reads as broken;
+                     name the missing field instead. -->
+                <template v-else-if="!formValid">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                  <span>
+                    <strong>Completa tus datos</strong>
+                    <small>{{ missingFieldsLabel }}</small>
+                  </span>
+                </template>
                 <template v-else>
                   <i class="fa-solid fa-lock"></i>
                   <span>
@@ -982,6 +1008,7 @@ $bg: #f8f6f3;
   &__back {
     display: inline-flex;
     align-items: center;
+    min-height: 44px;
     gap: 0.45rem;
     background: none;
     border: none;
@@ -1178,15 +1205,22 @@ $bg: #f8f6f3;
 
     input {
       width: 100%;
+      // 44px is the smallest comfortable touch target; the old 40px missed it.
+      min-height: 44px;
       padding: 0.7rem 0.875rem 0.7rem 2.375rem;
       border: 1.5px solid #e5e5e5;
       border-radius: 0.75rem;
-      font-size: 0.9rem;
+      // Below 16px iOS Safari zooms the whole page on focus.
+      font-size: 1rem;
       outline: none;
       background: #fff;
       color: $accent;
       transition: border-color 0.18s, box-shadow 0.18s;
       box-sizing: border-box;
+
+      @include respond-to('sm') {
+        font-size: 0.9rem;
+      }
 
       &::placeholder {
         color: #ccc;
@@ -1938,6 +1972,7 @@ $bg: #f8f6f3;
   &__edit {
     margin-top: 1rem;
     width: 100%;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;

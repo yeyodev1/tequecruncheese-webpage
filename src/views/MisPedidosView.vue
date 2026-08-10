@@ -426,7 +426,12 @@ onMounted(() => {
                       <ul class="ocard__items">
                         <li v-for="item in order.items" :key="item.slug" class="ocard__item">
                           <span class="ocard__item-qty">{{ item.cantidad }}×</span>
-                          <span class="ocard__item-name">{{ item.nombre }}</span>
+                          <span class="ocard__item-name">
+                            {{ item.nombre }}
+                            <span v-if="item.flavorSelections?.length" class="ocard__item-flavors">
+                              Sabores: {{ item.flavorSelections.map(f => `${f.cantidad}× ${f.nombre}`).join(', ') }}
+                            </span>
+                          </span>
                           <span class="ocard__item-price">${{ (item.precio * item.cantidad).toFixed(2) }}</span>
                         </li>
                       </ul>
@@ -607,7 +612,12 @@ onMounted(() => {
                         <ul class="ocard__items">
                           <li v-for="item in order.items" :key="item.slug" class="ocard__item">
                             <span class="ocard__item-qty">{{ item.cantidad }}×</span>
-                            <span class="ocard__item-name">{{ item.nombre }}</span>
+                            <span class="ocard__item-name">
+                            {{ item.nombre }}
+                            <span v-if="item.flavorSelections?.length" class="ocard__item-flavors">
+                              Sabores: {{ item.flavorSelections.map(f => `${f.cantidad}× ${f.nombre}`).join(', ') }}
+                            </span>
+                          </span>
                             <span class="ocard__item-price">${{ (item.precio * item.cantidad).toFixed(2) }}</span>
                           </li>
                         </ul>
@@ -1383,6 +1393,15 @@ onMounted(() => {
     color: #666;
     font-weight: 500;
     line-height: 1.35;
+  }
+
+  &__item-flavors {
+    display: block;
+    margin-top: 2px;
+    color: #999;
+    font-weight: 400;
+    font-size: 0.78rem;
+    line-height: 1.3;
   }
 
   &__item-price {

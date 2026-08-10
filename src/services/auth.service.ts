@@ -1,4 +1,5 @@
 import APIBase from './httpBase'
+import type { CartItem } from '@/types'
 
 export interface LoginResponse {
   token: string
@@ -28,7 +29,7 @@ export interface MyOrder {
   _id: string
   trackingToken: string
   status: string
-  items: { slug: string; nombre: string; precio: number; cantidad: number }[]
+  items: CartItem[]
   total: number
   createdAt: string
   payWithPayPhone?: string

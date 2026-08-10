@@ -185,9 +185,14 @@ function printOrder() {
   const statusLabel = STATUS_CONFIG[o.status]?.label ?? o.status
   const subtotal = o.total - (o.deliveryCost ?? 0)
 
+  const flavorLine = (item: typeof o.items[number]) =>
+    item.flavorSelections?.length
+      ? `<br /><small>Sabores: ${esc(item.flavorSelections.map(f => `${f.cantidad}x ${f.nombre}`).join(', '))}</small>`
+      : ''
+
   const itemRows = o.items.map(item => `
     <tr>
-      <td>${esc(item.nombre)}</td>
+      <td>${esc(item.nombre)}${flavorLine(item)}</td>
       <td class="r">x${item.cantidad}</td>
       <td class="r">$${(item.precio * item.cantidad).toFixed(2)}</td>
     </tr>`).join('')
@@ -911,7 +916,12 @@ onBeforeUnmount(() => {
                 <table class="admin-drawer__items">
                   <tbody>
                     <tr v-for="item in selectedOrder.items" :key="item.slug">
-                      <td>{{ item.nombre }}</td>
+                      <td>
+                        {{ item.nombre }}
+                        <span v-if="item.flavorSelections?.length" class="admin-drawer__item-flavors">
+                          Sabores: {{ item.flavorSelections.map(f => `${f.cantidad}× ${f.nombre}`).join(', ') }}
+                        </span>
+                      </td>
                       <td class="admin__right admin-drawer__qty">× {{ item.cantidad }}</td>
                       <td class="admin__right admin-drawer__item-price">${{ (item.precio * item.cantidad).toFixed(2) }}</td>
                     </tr>
@@ -2273,6 +2283,14 @@ onBeforeUnmount(() => {
   &__item-price {
     font-weight: 700;
     color: $color-accent !important;
+  }
+
+  &__item-flavors {
+    display: block;
+    margin-top: 2px;
+    color: #777;
+    font-size: 0.74rem;
+    line-height: 1.35;
   }
 
   &__delivery-row td {

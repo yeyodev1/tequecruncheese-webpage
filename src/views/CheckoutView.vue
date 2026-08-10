@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { paymentService } from '@/services/payment.service'
 import { productService } from '@/services/product.service'
-import { mapsService } from '@/services/maps.service'
+import { mapsService, type MapsQuote } from '@/services/maps.service'
 import ProductDetailModal from '@/components/tienda/ProductDetailModal.vue'
 import type { Product, FlavorSelection } from '@/types'
 
@@ -43,29 +43,51 @@ function onFlavorAdded() {
 }
 
 // ── Delivery distance pricing ─────────────────────────────
+// The backend owns the real calculation (and the amount charged). Everything
+// here is a local preview so the customer sees a price while typing.
 const ORIGIN = { lat: -2.1647443, lng: -79.912804 } // Tequecruncheese, Guayaquil
+
+/** Continental Ecuador — anything outside is a mis-parse, not an address. */
+const EC_BBOX = { minLat: -5.2, maxLat: 1.8, minLng: -81.3, maxLng: -74.9 }
+const MAX_DELIVERY_KM = 60
+
+const NUM = '(-?\\d+\\.\\d+)'
+// Ordered by trustworthiness: `!3d!4d` is the resolved pin, `@` only the
+// viewport centre. Decimals are required so street numbers can't match.
+const COORD_PATTERNS = [
+  new RegExp(`!3d${NUM}!4d${NUM}`),
+  new RegExp(`[?&](?:q|query|destination|daddr|saddr|ll|sll|center|mlat)=(?:loc:)?${NUM},\\+?${NUM}`),
+  new RegExp(`/maps/(?:search|dir|place)/${NUM},\\+?${NUM}`),
+  new RegExp(`@${NUM},${NUM}`),
+]
+const BARE_COORDS_RE = new RegExp(`^\\s*${NUM}\\s*,\\s*${NUM}\\s*$`)
+
+function isPlausible(lat: number, lng: number): boolean {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
+  return lat >= EC_BBOX.minLat && lat <= EC_BBOX.maxLat
+    && lng >= EC_BBOX.minLng && lng <= EC_BBOX.maxLng
+}
 
 function extractCoordsFromMapsUrl(url: string): { lat: number; lng: number } | null {
   if (!url) return null
 
-  const patterns = [
-    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
-    /\/maps\/(?:search|dir)\/(-?\d+(?:\.\d+)?),\+?(-?\d+(?:\.\d+)?)/,
-    /[?&](?:q|query|destination|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
-    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
-  ]
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern)
-    if (match) return { lat: parseFloat(match[1]!), lng: parseFloat(match[2]!) }
+  const bare = url.match(BARE_COORDS_RE)
+  if (bare) {
+    const lat = parseFloat(bare[1]!), lng = parseFloat(bare[2]!)
+    if (isPlausible(lat, lng)) return { lat, lng }
   }
 
-  try {
-    const decoded = decodeURIComponent(url)
-    const plainCoords = decoded.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
-    if (plainCoords) return { lat: parseFloat(plainCoords[1]!), lng: parseFloat(plainCoords[2]!) }
-  } catch {
-    // Ignore malformed encodings and fall through to the neutral state.
+  let decoded = url
+  try { decoded = decodeURIComponent(url) } catch { /* keep the raw string */ }
+
+  for (const candidate of [url, decoded]) {
+    for (const pattern of COORD_PATTERNS) {
+      const match = candidate.match(pattern)
+      if (!match) continue
+      const lat = parseFloat(match[1]!), lng = parseFloat(match[2]!)
+      // Keep scanning: a bad `@` hit must not shadow a good `!3d!4d` later on.
+      if (isPlausible(lat, lng)) return { lat, lng }
+    }
   }
 
   return null
@@ -82,70 +104,92 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function getDeliveryCost(km: number): number {
-  if (km <= 1)    return 2.00
-  if (km <= 2.9)  return 2.50
-  if (km <= 4.9)  return 3.00
-  if (km <= 5.9)  return 3.50
-  if (km <= 7.9)  return 4.00
-  if (km <= 8.5)  return 4.50
-  if (km <= 9.9)  return 5.00
+/** Mirrors the backend tariff table. Out of radius → null ("por coordinar"). */
+function getDeliveryCost(km: number): number | null {
+  if (!Number.isFinite(km) || km < 0) return null
+  if (km <= 1) return 2.00
+  if (km <= 2.9) return 2.50
+  if (km <= 4.9) return 3.00
+  if (km <= 5.9) return 3.50
+  if (km <= 7.9) return 4.00
+  if (km <= 8.5) return 4.50
+  if (km <= 9.9) return 5.00
   if (km <= 10.9) return 5.50
   if (km <= 13.9) return 6.00
   if (km <= 15.9) return 6.50
   if (km <= 17.9) return 7.00
   if (km <= 20.9) return 8.00
   if (km <= 23.9) return 9.00
-  return 10.00
+  if (km <= MAX_DELIVERY_KM) return 10.00
+  return null
 }
 
 // ── Delivery method ────────────────────────────────────────────
 const deliveryMethod = ref<'delivery' | 'pickup'>('delivery')
 const isPickup = computed(() => deliveryMethod.value === 'pickup')
 
-// ── Short-URL resolution (goo.gl links need a backend redirect follow) ─
-const resolvedMapsUrl  = ref<string | null>(null)
-const isResolvingUrl   = ref(false)
-
-const SHORT_URL_RE = /maps\.app\.goo\.gl|goo\.gl\/maps/i
+// ── Backend quote (authoritative) ──────────────────────────────
+// Every link goes to the backend: short links need a redirect follow, and long
+// ones can resolve to a page whose coordinates only live in the HTML body.
+const quote = ref<MapsQuote | null>(null)
+const isResolvingUrl = ref(false)
+let quoteTimer: ReturnType<typeof setTimeout> | undefined
+let quoteSeq = 0
 
 watch(
   () => cart.customerInfo.mapsUrl,
-  async (newUrl) => {
-    resolvedMapsUrl.value = null
-    if (!newUrl || !SHORT_URL_RE.test(newUrl)) return
+  (newUrl) => {
+    clearTimeout(quoteTimer)
+    quote.value = null
+    const raw = (newUrl ?? '').trim()
+    if (!raw) { isResolvingUrl.value = false; return }
+
     isResolvingUrl.value = true
-    try {
-      resolvedMapsUrl.value = await mapsService.resolveUrl(newUrl)
-    } catch { /* resolvedMapsUrl stays null → warn shown */ }
-    finally { isResolvingUrl.value = false }
+    const seq = ++quoteSeq
+    // Debounced so a pasted-then-edited link doesn't fire a request per keystroke.
+    quoteTimer = setTimeout(async () => {
+      try {
+        const result = await mapsService.quote(raw)
+        if (seq === quoteSeq) quote.value = result
+      } catch {
+        // Leaves the local estimate (or the "por coordinar" notice) in place.
+      } finally {
+        if (seq === quoteSeq) isResolvingUrl.value = false
+      }
+    }, 500)
   },
   { immediate: true },
 )
 
-const effectiveMapsUrl = computed(() => {
-  const raw = cart.customerInfo.mapsUrl ?? ''
-  if (SHORT_URL_RE.test(raw)) return resolvedMapsUrl.value ?? raw
-  return raw
+/** Local estimate — only usable when the pasted link already carries coords. */
+const localCoords = computed(() => extractCoordsFromMapsUrl(cart.customerInfo.mapsUrl ?? ''))
+
+const customerCoords = computed(() => quote.value?.coords ?? localCoords.value)
+
+const deliveryKm = computed(() => {
+  if (quote.value?.km != null) return quote.value.km
+  const c = localCoords.value
+  return c ? haversineKm(ORIGIN.lat, ORIGIN.lng, c.lat, c.lng) : null
 })
 
-const customerCoords = computed(() => extractCoordsFromMapsUrl(effectiveMapsUrl.value))
-const deliveryKm     = computed(() =>
-  customerCoords.value
-    ? haversineKm(ORIGIN.lat, ORIGIN.lng, customerCoords.value.lat, customerCoords.value.lng)
-    : null,
-)
-const deliveryCost   = computed(() => {
+const deliveryCost = computed(() => {
   if (isPickup.value) return 0
+  if (quote.value) return quote.value.deliveryCost
   return deliveryKm.value !== null ? getDeliveryCost(deliveryKm.value) : null
 })
-const grandTotal     = computed(() => cart.totalPrice + (deliveryCost.value ?? 0))
+
+/** Coordinates found but beyond the delivery radius — price is coordinated. */
+const outOfRange = computed(() =>
+  !isPickup.value && customerCoords.value !== null && deliveryCost.value === null,
+)
+
+const grandTotal = computed(() => cart.totalPrice + (deliveryCost.value ?? 0))
 
 // ── Factura state ──────────────────────────────────────────
-const quiereFactura   = ref(false)
-const facturaEmail    = ref('')
-const facturaRuc      = ref('')
-const touchedFactura  = ref({ email: false, ruc: false })
+const quiereFactura = ref(false)
+const facturaEmail = ref('')
+const facturaRuc = ref('')
+const touchedFactura = ref({ email: false, ruc: false })
 
 // ── Touched state ──────────────────────────────────────────
 const touched = ref({
@@ -176,19 +220,19 @@ function validarCedula(cedula: string): boolean {
 }
 
 // ── Validators ─────────────────────────────────────────────
-const emailValid    = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cart.customerInfo.email))
-const nombreValid   = computed(() => cart.customerInfo.nombre.trim().length >= 3)
-const cedulaValid   = computed(() => validarCedula(cart.customerInfo.cedula))
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cart.customerInfo.email))
+const nombreValid = computed(() => cart.customerInfo.nombre.trim().length >= 3)
+const cedulaValid = computed(() => validarCedula(cart.customerInfo.cedula))
 const telefonoValid = computed(() => /^(09|02)\d{8}$/.test(cart.customerInfo.telefono))
-const calleValid    = computed(() => cart.customerInfo.calle.trim().length >= 5)
+const calleValid = computed(() => cart.customerInfo.calle.trim().length >= 5)
 
-const facturaRucValid   = computed(() => /^(\d{10}|\d{13})$/.test(facturaRuc.value))
+const facturaRucValid = computed(() => /^(\d{10}|\d{13})$/.test(facturaRuc.value))
 const facturaEmailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(facturaEmail.value))
 
 const formValid = computed(() => {
   const personal = emailValid.value && nombreValid.value && cedulaValid.value && telefonoValid.value
-  const address  = isPickup.value || calleValid.value
-  const base     = personal && address
+  const address = isPickup.value || calleValid.value
+  const base = personal && address
   if (!quiereFactura.value) return base
   return base && facturaRucValid.value && facturaEmailValid.value
 })
@@ -209,6 +253,7 @@ const errorMsg = ref('')
 
 async function checkout() {
   if (cart.isEmpty || loading.value || !formValid.value || !allFlavorsConfigured.value) return
+  if (isResolvingUrl.value) return // wait for the authoritative delivery quote
   loading.value = true
   errorMsg.value = ''
   try {
@@ -573,14 +618,21 @@ function orderByWhatsApp() {
                   <div v-if="cart.customerInfo.mapsUrl" class="co-delivery-preview"
                     :class="{
                       'co-delivery-preview--loading': isResolvingUrl,
-                      'co-delivery-preview--ok':      !isResolvingUrl && customerCoords,
-                      'co-delivery-preview--warn':    !isResolvingUrl && !customerCoords,
+                      'co-delivery-preview--ok': !isResolvingUrl && customerCoords && !outOfRange,
+                      'co-delivery-preview--warn': !isResolvingUrl && (!customerCoords || outOfRange),
                     }"
                   >
                     <template v-if="isResolvingUrl">
                       <i class="fa-solid fa-spinner fa-spin"></i>
                       <div class="co-delivery-preview__body">
                         <strong>Calculando distancia...</strong>
+                      </div>
+                    </template>
+                    <template v-else-if="customerCoords && outOfRange">
+                      <i class="fa-solid fa-triangle-exclamation"></i>
+                      <div class="co-delivery-preview__body">
+                        <strong>Estás a {{ deliveryKm!.toFixed(1) }} km de la tienda</strong>
+                        <span>Fuera de nuestra zona habitual; coordinamos el envío contigo</span>
                       </div>
                     </template>
                     <template v-else-if="customerCoords">
@@ -695,12 +747,16 @@ function orderByWhatsApp() {
               <!-- PayPhone -->
               <button
                 class="co-pay-btn co-pay-btn--payphone"
-                :disabled="!formValid || loading || !allFlavorsConfigured"
+                :disabled="!formValid || loading || !allFlavorsConfigured || isResolvingUrl"
                 @click="checkout"
               >
                 <template v-if="loading">
                   <i class="fa-solid fa-spinner fa-spin"></i>
                   Preparando pago...
+                </template>
+                <template v-else-if="isResolvingUrl">
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                  Calculando envío...
                 </template>
                 <template v-else-if="!allFlavorsConfigured">
                   <i class="fa-solid fa-sliders"></i>
@@ -821,9 +877,9 @@ function orderByWhatsApp() {
 </template>
 
 <style lang="scss" scoped>
-$accent:  #572612;
-$gold:    #FED47F;
-$bg:      #f8f6f3;
+$accent: #572612;
+$gold: #FED47F;
+$bg: #f8f6f3;
 
 // ── Page wrapper ──────────────────────────────────────────────
 .checkout-view {
@@ -844,7 +900,7 @@ $bg:      #f8f6f3;
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 
   &__inner {
     width: 100%;
@@ -870,8 +926,14 @@ $bg:      #f8f6f3;
     transition: color 0.12s, background 0.12s;
     flex-shrink: 0;
 
-    i { font-size: 0.75rem; }
-    &:hover { color: #fff; background: rgba(#fff, 0.08); }
+    i {
+      font-size: 0.75rem;
+    }
+
+    &:hover {
+      color: #fff;
+      background: rgba(#fff, 0.08);
+    }
   }
 
   &__brand {
@@ -888,7 +950,9 @@ $bg:      #f8f6f3;
     font-family: inherit;
   }
 
-  &__space { width: 120px; }
+  &__space {
+    width: 120px;
+  }
 }
 
 // ── Main layout ───────────────────────────────────────────────
@@ -923,7 +987,9 @@ $bg:      #f8f6f3;
   margin: 0 0 1.5rem;
   letter-spacing: -0.02em;
 
-  @media (min-width: 640px) { font-size: 1.75rem; }
+  @media (min-width: 640px) {
+    font-size: 1.75rem;
+  }
 }
 
 // ── Form column ───────────────────────────────────────────────
@@ -940,8 +1006,8 @@ $bg:      #f8f6f3;
   background: #fff;
   border-radius: 1.25rem;
   padding: 1.5rem;
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 
   &__head {
     display: flex;
@@ -996,7 +1062,9 @@ $bg:      #f8f6f3;
       flex-direction: row;
       gap: 0.875rem;
 
-      > .co-field { flex: 1; }
+      >.co-field {
+        flex: 1;
+      }
     }
   }
 }
@@ -1015,7 +1083,10 @@ $bg:      #f8f6f3;
     gap: 0.3rem;
   }
 
-  &__req { color: #e53e3e; font-size: 0.9em; }
+  &__req {
+    color: #e53e3e;
+    font-size: 0.9em;
+  }
 
   &__optional {
     font-size: 0.72rem;
@@ -1028,7 +1099,7 @@ $bg:      #f8f6f3;
     display: flex;
     align-items: center;
 
-    > i {
+    >i {
       position: absolute;
       left: 0.875rem;
       font-size: 0.75rem;
@@ -1049,7 +1120,9 @@ $bg:      #f8f6f3;
       transition: border-color 0.18s, box-shadow 0.18s;
       box-sizing: border-box;
 
-      &::placeholder { color: #ccc; }
+      &::placeholder {
+        color: #ccc;
+      }
 
       &:focus {
         border-color: $accent;
@@ -1060,7 +1133,10 @@ $bg:      #f8f6f3;
     &--err input {
       border-color: #e53e3e;
       background: #fff8f8;
-      &:focus { box-shadow: 0 0 0 3px rgba(229,62,62,0.08); }
+
+      &:focus {
+        box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.08);
+      }
     }
   }
 
@@ -1070,7 +1146,10 @@ $bg:      #f8f6f3;
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    i { font-size: 0.65rem; }
+
+    i {
+      font-size: 0.65rem;
+    }
   }
 
   &__hint-text {
@@ -1079,7 +1158,10 @@ $bg:      #f8f6f3;
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    i { font-size: 0.65rem; }
+
+    i {
+      font-size: 0.65rem;
+    }
   }
 }
 
@@ -1104,23 +1186,44 @@ $bg:      #f8f6f3;
     text-align: left;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 
-    > i { font-size: 1.1rem; color: #bbb; flex-shrink: 0; transition: color 0.15s; }
+    >i {
+      font-size: 1.1rem;
+      color: #bbb;
+      flex-shrink: 0;
+      transition: color 0.15s;
+    }
 
     div {
       display: flex;
       flex-direction: column;
       gap: 0.1rem;
       min-width: 0;
-      strong { font-size: 0.82rem; font-weight: 800; color: #444; line-height: 1.2; }
-      span   { font-size: 0.7rem; color: #aaa; }
+
+      strong {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: #444;
+        line-height: 1.2;
+      }
+
+      span {
+        font-size: 0.7rem;
+        color: #aaa;
+      }
     }
 
     &--active {
       border-color: $accent;
       background: rgba($accent, 0.04);
       box-shadow: 0 0 0 3px rgba($accent, 0.07);
-      > i { color: $accent; }
-      div strong { color: $accent; }
+
+      >i {
+        color: $accent;
+      }
+
+      div strong {
+        color: $accent;
+      }
     }
 
     &:not(&--active):hover {
@@ -1142,14 +1245,26 @@ $bg:      #f8f6f3;
   color: #276749;
   font-size: 0.85rem;
 
-  > i { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; color: #38a169; }
+  >i {
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: #38a169;
+  }
 
   div {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
-    strong { font-weight: 800; }
-    span   { font-size: 0.78rem; opacity: 0.8; }
+
+    strong {
+      font-weight: 800;
+    }
+
+    span {
+      font-size: 0.78rem;
+      opacity: 0.8;
+    }
   }
 }
 
@@ -1167,13 +1282,20 @@ $bg:      #f8f6f3;
   user-select: none;
   transition: border-color 0.15s;
 
-  &:hover { border-color: #b7896a; }
+  &:hover {
+    border-color: #b7896a;
+  }
 
   &__text {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    i { font-size: 1.1rem; color: #8b6343; opacity: 0.8; }
+
+    i {
+      font-size: 1.1rem;
+      color: #8b6343;
+      opacity: 0.8;
+    }
   }
 
   &__label {
@@ -1199,7 +1321,9 @@ $bg:      #f8f6f3;
     flex-shrink: 0;
     transition: background 0.2s;
 
-    &--on { background: #2f855a; }
+    &--on {
+      background: #2f855a;
+    }
   }
 
   &__thumb {
@@ -1211,9 +1335,11 @@ $bg:      #f8f6f3;
     border-radius: 50%;
     background: #fff;
     transition: transform 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 
-    .co-factura-toggle__switch--on & { transform: translateX(18px); }
+    .co-factura-toggle__switch--on & {
+      transform: translateX(18px);
+    }
   }
 }
 
@@ -1240,13 +1366,19 @@ $bg:      #f8f6f3;
 
 // Factura transition
 .co-factura-enter-active,
-.co-factura-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.co-factura-leave-active {
+  transition: opacity 0.2s, transform 0.2s;
+}
+
 .co-factura-enter-from,
-.co-factura-leave-to { opacity: 0; transform: translateY(-6px); }
+.co-factura-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
 
 .co-error {
   background: #fff5f5;
-  border: 1px solid rgba(229,62,62,0.3);
+  border: 1px solid rgba(229, 62, 62, 0.3);
   color: #c53030;
   font-size: 0.82rem;
   font-weight: 600;
@@ -1290,7 +1422,7 @@ $bg:      #f8f6f3;
   transition: opacity 0.15s, transform 0.12s, box-shadow 0.15s;
   text-align: left;
 
-  > i:first-child {
+  >i:first-child {
     font-size: 1.25rem;
     flex-shrink: 0;
   }
@@ -1306,6 +1438,7 @@ $bg:      #f8f6f3;
       font-weight: 800;
       line-height: 1.2;
     }
+
     small {
       font-size: 0.74rem;
       opacity: 0.75;
@@ -1323,9 +1456,12 @@ $bg:      #f8f6f3;
   &:not(:disabled):hover {
     opacity: 0.9;
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   }
-  &:active { transform: translateY(0); }
+
+  &:active {
+    transform: translateY(0);
+  }
 
   &--payphone {
     background: $accent;
@@ -1339,11 +1475,14 @@ $bg:      #f8f6f3;
   }
 
   &--whatsapp {
-    background: rgba(37,211,102,0.06);
-    border: 1.5px solid rgba(37,211,102,0.3);
+    background: rgba(37, 211, 102, 0.06);
+    border: 1.5px solid rgba(37, 211, 102, 0.3);
     color: #128c3e;
 
-    > i { color: #25d366; font-size: 1.3rem; }
+    >i {
+      color: #25d366;
+      font-size: 1.3rem;
+    }
   }
 }
 
@@ -1353,7 +1492,8 @@ $bg:      #f8f6f3;
   gap: 0.75rem;
   padding: 0.25rem 0;
 
-  &::before, &::after {
+  &::before,
+  &::after {
     content: '';
     flex: 1;
     height: 1px;
@@ -1377,7 +1517,11 @@ $bg:      #f8f6f3;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  i { color: #38a169; font-size: 0.78rem; }
+
+  i {
+    color: #38a169;
+    font-size: 0.78rem;
+  }
 }
 
 // ── Delivery cost preview (below mapsUrl field) ───────────────
@@ -1390,42 +1534,69 @@ $bg:      #f8f6f3;
   margin-top: 0.5rem;
   font-size: 0.82rem;
 
-  > i { font-size: 0.9rem; flex-shrink: 0; margin-top: 0.1rem; }
+  >i {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
 
   &__body {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
-    strong { font-weight: 800; line-height: 1.2; }
-    span   { font-size: 0.75rem; opacity: 0.75; }
+
+    strong {
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    span {
+      font-size: 0.75rem;
+      opacity: 0.75;
+    }
   }
 
   &--loading {
     background: #f7f8ff;
     border: 1.5px solid #bee3f8;
     color: #2b6cb0;
-    > i { color: #3182ce; }
+
+    >i {
+      color: #3182ce;
+    }
   }
 
   &--ok {
     background: #f0fff4;
     border: 1.5px solid #9ae6b4;
     color: #276749;
-    > i { color: #38a169; }
+
+    >i {
+      color: #38a169;
+    }
   }
 
   &--warn {
     background: #fffbeb;
     border: 1.5px solid #fbd38d;
     color: #92400e;
-    > i { color: #dd6b20; }
+
+    >i {
+      color: #dd6b20;
+    }
   }
 }
 
 .co-delivery-enter-active,
-.co-delivery-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.co-delivery-leave-active {
+  transition: opacity 0.2s, transform 0.2s;
+}
+
 .co-delivery-enter-from,
-.co-delivery-leave-to { opacity: 0; transform: translateY(-4px); }
+.co-delivery-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
 
 // ── Summary sidebar ───────────────────────────────────────────
 .co-summary {
@@ -1440,8 +1611,8 @@ $bg:      #f8f6f3;
     background: #fff;
     border-radius: 1.25rem;
     padding: 1.375rem;
-    border: 1px solid rgba(0,0,0,0.06);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
   &__title {
@@ -1455,7 +1626,10 @@ $bg:      #f8f6f3;
     gap: 0.4rem;
     margin: 0 0 1rem;
 
-    i { font-size: 0.8rem; color: rgba($accent, 0.5); }
+    i {
+      font-size: 0.8rem;
+      color: rgba($accent, 0.5);
+    }
   }
 
   &__list {
@@ -1520,7 +1694,10 @@ $bg:      #f8f6f3;
     overflow: hidden;
     text-overflow: ellipsis;
 
-    i { font-size: 0.65rem; flex-shrink: 0; }
+    i {
+      font-size: 0.65rem;
+      flex-shrink: 0;
+    }
   }
 
   &__item-price {
@@ -1546,7 +1723,10 @@ $bg:      #f8f6f3;
     color: #888;
     font-weight: 500;
 
-    i { font-size: 0.7rem; margin-right: 0.2rem; }
+    i {
+      font-size: 0.7rem;
+      margin-right: 0.2rem;
+    }
 
     &--delivery {
       color: #276749;
@@ -1595,10 +1775,18 @@ $bg:      #f8f6f3;
     cursor: pointer;
     transition: color 0.12s, border-color 0.12s, background 0.12s;
 
-    i { font-size: 0.72rem; }
-    &:hover { color: $accent; border-color: $accent; background: rgba($accent, 0.03); }
+    i {
+      font-size: 0.72rem;
+    }
+
+    &:hover {
+      color: $accent;
+      border-color: $accent;
+      background: rgba($accent, 0.03);
+    }
   }
 }
+
 // ── Flavor alert ──────────────────────────────────────────────
 .co-flavor-alert {
   background: #fffbeb;
@@ -1614,7 +1802,7 @@ $bg:      #f8f6f3;
     align-items: flex-start;
     gap: 0.75rem;
 
-    > i {
+    >i {
       font-size: 1.1rem;
       color: #dd6b20;
       margin-top: 0.1rem;
@@ -1663,7 +1851,11 @@ $bg:      #f8f6f3;
     flex: 1;
     min-width: 0;
 
-    i { font-size: 0.85rem; color: #dd6b20; flex-shrink: 0; }
+    i {
+      font-size: 0.85rem;
+      color: #dd6b20;
+      flex-shrink: 0;
+    }
 
     span {
       font-size: 0.875rem;
@@ -1698,8 +1890,14 @@ $bg:      #f8f6f3;
     flex-shrink: 0;
     transition: opacity 0.15s, transform 0.1s;
 
-    i { font-size: 0.75rem; }
-    &:hover { opacity: 0.88; transform: translateY(-1px); }
+    i {
+      font-size: 0.75rem;
+    }
+
+    &:hover {
+      opacity: 0.88;
+      transform: translateY(-1px);
+    }
   }
 }
 </style>

@@ -135,7 +135,12 @@ onMounted(async () => {
           </thead>
           <tbody>
             <tr v-for="item in order.items" :key="item.slug">
-              <td>{{ item.nombre }}</td>
+              <td>
+                {{ item.nombre }}
+                <span v-if="item.flavorSelections?.length" class="track-order__flavors">
+                  Sabores: {{ item.flavorSelections.map(f => `${f.cantidad}× ${f.nombre}`).join(', ') }}
+                </span>
+              </td>
               <td class="track-order__center">{{ item.cantidad }}</td>
               <td class="track-order__right">${{ (item.precio * item.cantidad).toFixed(2) }}</td>
             </tr>
@@ -320,6 +325,14 @@ onMounted(async () => {
   }
 
   &__center { text-align: center; }
+
+  &__flavors {
+    display: block;
+    margin-top: 2px;
+    color: #999;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
   &__right  { text-align: right; }
 
   &__total {

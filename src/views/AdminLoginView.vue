@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminService } from '@/services/admin.service'
+import BrandLogo from '@/components/BrandLogo.vue'
 
 const router = useRouter()
 const email = ref('admin@tequecruncheese.com')
@@ -29,7 +30,7 @@ async function handleLogin() {
   <div class="admin-login">
     <div class="admin-login__card">
       <div class="admin-login__brand">
-        <span>🧀</span>
+        <BrandLogo variant="mark" :height="56" :to="null" />
         <h1>Tequecruncheese</h1>
         <p>Panel de administración</p>
       </div>
@@ -94,8 +95,9 @@ async function handleLogin() {
   &__brand {
     text-align: center;
     margin-bottom: 2rem;
-
-    span { font-size: 2.5rem; }
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 
     h1 {
       font-size: 1.4rem;

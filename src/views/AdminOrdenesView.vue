@@ -5,6 +5,7 @@ import { VueDraggable } from 'vue-draggable-plus'
 import gsap from 'gsap'
 import { adminService } from '@/services/admin.service'
 import { formatSchedule, formatScheduleShort } from '@/services/schedule.service'
+import BrandLogo from '@/components/BrandLogo.vue'
 import type { AdminOrder, OrderStatus } from '@/types'
 
 const router = useRouter()
@@ -491,11 +492,7 @@ onBeforeUnmount(() => {
     <!-- Header -->
     <header class="admin__header">
       <div class="admin__header-left">
-        <img
-          class="admin__logo"
-          src="https://res.cloudinary.com/dvq6znk71/image/upload/f_auto,q_auto/tequecruncheese/logos/logo-small"
-          alt="TequeCruncheese"
-        />
+        <BrandLogo class="admin__logo" variant="mark" :height="36" to="/admin/dashboard" />
         <div>
           <h1>Panel de Administración</h1>
           <p>Tequecruncheese</p>
@@ -1062,9 +1059,8 @@ onBeforeUnmount(() => {
     gap: 0.75rem;
   }
 
+  // Sizing lives on the BrandLogo `height` prop.
   &__logo {
-    height: 36px;
-    width: auto;
     flex-shrink: 0;
   }
 

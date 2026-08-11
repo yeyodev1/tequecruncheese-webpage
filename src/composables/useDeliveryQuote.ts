@@ -25,10 +25,36 @@ const COORD_PATTERNS = [
 ]
 const BARE_COORDS_RE = new RegExp(`^\\s*${NUM}\\s*,\\s*${NUM}\\s*$`)
 
+// A shared "how to get there" link: the address to deliver to is the
+// destination, and the origin it also carries is our own store.
+const DIRECTIONS_RE = /[?&](?:daddr|destination)=|\/maps\/dir\//i
+const DEST_PATTERNS = [
+  new RegExp(`[?&](?:daddr|destination)=(?:loc:)?${NUM},\\+?${NUM}`),
+  new RegExp(`/maps/dir/[^/?#]*/${NUM},\\+?${NUM}`),
+]
+/** Closer than this to the store, a route hit is the origin, not a home. */
+const SAME_PLACE_KM = 0.05
+
 function isPlausible(lat: number, lng: number): boolean {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
   return lat >= EC_BBOX.minLat && lat <= EC_BBOX.maxLat
     && lng >= EC_BBOX.minLng && lng <= EC_BBOX.maxLng
+}
+
+/** Percent-decode escape by escape, so one bad `%` cannot void the string. */
+function decodeSafe(text: string): string {
+  return text.replace(/(?:%[0-9A-Fa-f]{2})+/g, (seq) => {
+    try { return decodeURIComponent(seq) } catch { return seq }
+  })
+}
+
+function matchAllCoords(text: string, pattern: RegExp): { lat: number; lng: number }[] {
+  const found: { lat: number; lng: number }[] = []
+  for (const match of text.matchAll(new RegExp(pattern.source, 'gi'))) {
+    const lat = parseFloat(match[1]!), lng = parseFloat(match[2]!)
+    if (isPlausible(lat, lng)) found.push({ lat, lng })
+  }
+  return found
 }
 
 export function extractCoordsFromMapsUrl(url: string): { lat: number; lng: number } | null {
@@ -40,16 +66,29 @@ export function extractCoordsFromMapsUrl(url: string): { lat: number; lng: numbe
     if (isPlausible(lat, lng)) return { lat, lng }
   }
 
-  let decoded = url
-  try { decoded = decodeURIComponent(url) } catch { /* keep the raw string */ }
+  const decoded = decodeSafe(url)
+  const candidates = decoded === url ? [url] : [url, decoded]
+  const isRoute = DIRECTIONS_RE.test(url) || DIRECTIONS_RE.test(decoded)
 
-  for (const candidate of [url, decoded]) {
+  if (isRoute) {
+    for (const candidate of candidates) {
+      for (const pattern of DEST_PATTERNS) {
+        const hits = matchAllCoords(candidate, pattern)
+        if (hits.length) return hits[0]!
+      }
+    }
+  }
+
+  for (const candidate of candidates) {
     for (const pattern of COORD_PATTERNS) {
-      const match = candidate.match(pattern)
-      if (!match) continue
-      const lat = parseFloat(match[1]!), lng = parseFloat(match[2]!)
-      // Keep scanning: a bad `@` hit must not shadow a good `!3d!4d` later on.
-      if (isPlausible(lat, lng)) return { lat, lng }
+      // Collect every hit: a bad `@` match must not shadow a good `!3d!4d`,
+      // and on a route the waypoints run in travel order — destination last.
+      const hits = matchAllCoords(candidate, pattern)
+      if (!hits.length) continue
+      const pick = isRoute ? hits[hits.length - 1]! : hits[0]!
+      // On a route, a pin sitting on the store is the origin leaking through.
+      if (isRoute && haversineKm(ORIGIN.lat, ORIGIN.lng, pick.lat, pick.lng) <= SAME_PLACE_KM) continue
+      return pick
     }
   }
 

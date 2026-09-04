@@ -132,11 +132,11 @@ function onPicked(coords: { lat: number; lng: number }) {
       </div>
 
       <CheckoutField
-        label="Link de Google Maps"
+        label="Tu ubicación"
         icon="fa-solid fa-map-pin"
-        optional="(opcional · calcula tu envío)"
-        placeholder="Pega aquí tu link o ubicación de Google Maps"
-        hint="Pega cualquier link de Google Maps, ubicación compartida o dirección aproximada"
+        required
+        placeholder="Pega tu link de Google Maps, o marca el mapa abajo"
+        hint="Sin ubicación no podemos calcular el envío. Vale un link de Maps, un Plus Code, o marcarla en el mapa."
         :model-value="cart.customerInfo.mapsUrl ?? ''"
         @update:model-value="setField('mapsUrl', $event)"
       >

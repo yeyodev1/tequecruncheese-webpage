@@ -33,6 +33,19 @@ onMounted(async () => {
   try { scheduleConfig.value = await scheduleService.config() } catch { /* defaults stand */ }
 })
 
+/**
+ * Closed for the night. The API is the one that refuses the order; this only
+ * surfaces the same answer early, so nobody fills in an address and a cedula
+ * before finding out. Defaults to open, so a failed config fetch never locks
+ * a store that is actually taking orders.
+ */
+const storeClosed = computed(() => scheduleConfig.value.isOpen === false)
+
+const closedMessage = computed(() =>
+  `Ya cerramos por hoy. Recibimos pedidos de ${scheduleConfig.value.openHour}:00 a ` +
+  `${scheduleConfig.value.closeHour}:00. ¡Te esperamos mañana!`,
+)
+
 /** Items that have flavors configured on the product but none chosen yet. */
 const itemsMissingFlavors = computed(() =>
   cart.items.filter(item => {
@@ -126,6 +139,7 @@ const errorMsg = ref('')
 async function checkout() {
   if (cart.isEmpty || loading.value || !formValid.value || !allFlavorsConfigured.value) return
   if (isResolvingUrl.value) return // wait for the authoritative delivery quote
+  if (storeClosed.value) return // the API would refuse it anyway
   loading.value = true
   errorMsg.value = ''
   try {
@@ -147,8 +161,13 @@ async function checkout() {
       ...(scheduledFor.value ? { scheduledFor: scheduledFor.value } : {}),
     })
     window.location.href = result.payWithPayPhone
-  } catch {
-    errorMsg.value = 'Hubo un problema al procesar el pago. Intenta de nuevo.'
+  } catch (err) {
+    // The API explains refusals the customer can act on — closed store, a slot
+    // that just expired. Swallowing those behind a generic message left people
+    // retrying a payment that was never going to go through.
+    const apiMessage = (err as { response?: { data?: { message?: string } } })
+      ?.response?.data?.message
+    errorMsg.value = apiMessage || 'Hubo un problema al procesar el pago. Intenta de nuevo.'
     loading.value = false
   }
 }
@@ -157,6 +176,9 @@ async function checkout() {
 function orderByWhatsApp() {
   // A booked slot is held by the payment, so WhatsApp is not an option for it.
   if (scheduledFor.value) return
+  // Closing time applies to every channel — routing around the checkout would
+  // land the same after-hours order in the same kitchen.
+  if (storeClosed.value) return
 
   openWhatsAppOrder({
     items: cart.items,
@@ -189,6 +211,14 @@ function orderByWhatsApp() {
 
         <div class="co-form-col">
           <h1 class="co-title">Completa tu pedido</h1>
+
+          <div v-if="storeClosed" class="co-closed" role="status">
+            <i class="fa-solid fa-moon"></i>
+            <div>
+              <strong>Estamos cerrados</strong>
+              <p>{{ closedMessage }}</p>
+            </div>
+          </div>
 
           <FlavorAlert :items="itemsMissingFlavors" @pick="openFlavorPicker" />
 
@@ -233,6 +263,8 @@ function orderByWhatsApp() {
             :grand-total="grandTotal"
             :scheduled-for="scheduledFor"
             :scheduled-label="scheduledLabel"
+            :store-closed="storeClosed"
+            :closed-message="closedMessage"
             @checkout="checkout"
             @whatsapp="orderByWhatsApp"
             @clear-schedule="scheduledFor = null"
@@ -272,6 +304,38 @@ $bg: #f8f6f3;
   background: $bg;
   display: flex;
   flex-direction: column;
+}
+
+// Closed-for-the-night notice. Warm amber rather than the error red: the store
+// being shut is not the customer having done something wrong.
+.co-closed {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: #fff8ec;
+  border: 1px solid rgba(191, 132, 16, 0.32);
+  color: #8a5a00;
+  padding: 0.9rem 1.1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+
+  i {
+    font-size: 1.05rem;
+    line-height: 1.4;
+    flex-shrink: 0;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0.15rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
 }
 
 .co-header {

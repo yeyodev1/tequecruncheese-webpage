@@ -12,6 +12,9 @@ defineProps<{
   grandTotal: number
   scheduledFor: string | null
   scheduledLabel: string
+  /** Outside opening hours: every channel closes, not just the card button. */
+  storeClosed: boolean
+  closedMessage: string
 }>()
 
 const emit = defineEmits<{
@@ -36,10 +39,19 @@ const emit = defineEmits<{
     <div class="co-pay-options">
       <button
         class="co-pay-btn co-pay-btn--payphone"
-        :disabled="!formValid || loading || !allFlavorsConfigured || isResolvingUrl"
+        :disabled="storeClosed || !formValid || loading || !allFlavorsConfigured || isResolvingUrl"
         @click="emit('checkout')"
       >
-        <template v-if="loading">
+        <!-- Closed outranks every other state: no point naming a missing field
+             when the order cannot be placed at this hour regardless. -->
+        <template v-if="storeClosed">
+          <i class="fa-solid fa-moon"></i>
+          <span>
+            <strong>Cerrado por hoy</strong>
+            <small>{{ closedMessage }}</small>
+          </span>
+        </template>
+        <template v-else-if="loading">
           <i class="fa-solid fa-spinner fa-spin"></i>
           Preparando pago...
         </template>
@@ -74,20 +86,23 @@ const emit = defineEmits<{
       </button>
 
       <div class="co-pay-divider">
-        <span>{{ scheduledFor ? 'no disponible al programar' : 'o también puedes' }}</span>
+        <span v-if="storeClosed">fuera de horario</span>
+        <span v-else>{{ scheduledFor ? 'no disponible al programar' : 'o también puedes' }}</span>
       </div>
 
-      <!-- WhatsApp — blocked for scheduled orders, which must be prepaid -->
+      <!-- WhatsApp — blocked for scheduled orders, which must be prepaid,
+           and after hours, when there is nobody to answer it either. -->
       <button
         class="co-pay-btn co-pay-btn--whatsapp"
-        :class="{ 'co-pay-btn--blocked': scheduledFor }"
-        :disabled="!!scheduledFor"
+        :class="{ 'co-pay-btn--blocked': scheduledFor || storeClosed }"
+        :disabled="!!scheduledFor || storeClosed"
         @click="emit('whatsapp')"
       >
         <i class="fa-brands fa-whatsapp"></i>
         <span>
           <strong>Continuar por WhatsApp</strong>
-          <small v-if="scheduledFor">Los pedidos programados se pagan con tarjeta</small>
+          <small v-if="storeClosed">Volvemos a atender mañana</small>
+          <small v-else-if="scheduledFor">Los pedidos programados se pagan con tarjeta</small>
           <small v-else>Te contactamos para coordinar</small>
         </span>
       </button>

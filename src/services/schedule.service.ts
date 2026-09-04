@@ -10,6 +10,10 @@ export interface ScheduleConfig {
   /** Server clock at the time of the request, so a skewed device still
    *  offers slots the API will accept. */
   serverNow: string
+  /** Whether the store is taking orders right now, per the server's clock.
+   *  The checkout blocks on this so a closed store is visible before the
+   *  customer fills in the form, not after the payment call is refused. */
+  isOpen: boolean
 }
 
 /** Mirrors the backend defaults so the picker renders before the fetch lands. */
@@ -21,6 +25,9 @@ export const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   minLeadMinutes: 60,
   maxDaysAhead: 14,
   serverNow: '',
+  // Optimistic until the server answers: a failed config fetch must not lock
+  // a working store. The API still refuses out-of-hours orders either way.
+  isOpen: true,
 }
 
 /**

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { computed, ref, reactive, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
 import gsap from 'gsap'
@@ -164,6 +164,29 @@ function syncColArrays() {
 }
 
 watch([orders, searchQ], syncColArrays, { deep: true })
+
+/**
+ * Orders whose payment never came back, which the board cannot show.
+ *
+ * The kanban only renders the four post-payment columns, so a `pending` order
+ * was invisible here — including one where the customer paid and the browser
+ * simply never returned to confirm it. That is the case that had the store
+ * asking "no sé cómo ver el pedido" while the money had already moved. They
+ * live above the board now instead of nowhere.
+ */
+const pendingOrders = computed(() => {
+  const q = searchQ.value.trim().toLowerCase()
+  return orders.value
+    .filter(o => o.status === 'pending')
+    .filter(o =>
+      !q ||
+      o.customerEmail.toLowerCase().includes(q) ||
+      (o.customerName ?? '').toLowerCase().includes(q),
+    )
+})
+
+/** Collapsed by default: most of these are abandoned carts, not lost money. */
+const showPending = ref(false)
 
 // ─── Order detail ─────────────────────────────────────────────────────────────
 function openOrder(order: AdminOrder) {
@@ -537,6 +560,35 @@ onBeforeUnmount(() => {
       <!-- Error feedback -->
       <div v-if="error" class="kanban__error">
         <i class="fa-solid fa-triangle-exclamation"></i> {{ error }}
+      </div>
+
+      <!-- Payments that never came back. Not a column: these are not work in
+           progress, they are orders to check on. -->
+      <div v-if="pendingOrders.length" class="kanban__pending">
+        <button class="kanban__pending-head" @click="showPending = !showPending">
+          <i class="fa-solid fa-hourglass-half"></i>
+          <span class="kanban__pending-title">
+            {{ pendingOrders.length }}
+            {{ pendingOrders.length === 1 ? 'pedido sin pago confirmado' : 'pedidos sin pago confirmado' }}
+          </span>
+          <span class="kanban__pending-hint">
+            Casi siempre son carritos abandonados, pero revisa si alguien dice que ya pagó
+          </span>
+          <i class="fa-solid" :class="showPending ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+        </button>
+
+        <div v-if="showPending" class="kanban__pending-list">
+          <button
+            v-for="o in pendingOrders"
+            :key="o._id"
+            class="kanban__pending-row"
+            @click="openOrder(o)"
+          >
+            <span class="kanban__pending-when">{{ timeAgo(o.createdAt) }}</span>
+            <span class="kanban__pending-who">{{ o.customerName ?? o.customerEmail }}</span>
+            <span class="kanban__pending-amount">${{ o.total.toFixed(2) }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Board -->
@@ -1035,6 +1087,81 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" scoped>
+// Payments that never came back. Deliberately quieter than a column: it is a
+// list to check on, not work the kitchen is holding.
+.kanban__pending {
+  margin: 0 0 1rem;
+  border: 1.5px solid rgba(#b7791f, 0.35);
+  border-radius: 0.75rem;
+  background: #fffbeb;
+  overflow: hidden;
+
+  &-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0.95rem;
+    border: none;
+    background: transparent;
+    color: #92400e;
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover { background: rgba(#b7791f, 0.08); }
+  }
+
+  &-title { font-weight: 800; }
+
+  &-hint {
+    flex: 1;
+    font-size: 0.76rem;
+    opacity: 0.75;
+  }
+
+  &-list { border-top: 1px solid rgba(#b7791f, 0.25); }
+
+  &-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.95rem;
+    border: none;
+    border-bottom: 1px solid rgba(#b7791f, 0.12);
+    background: transparent;
+    font-size: 0.82rem;
+    color: #7c4a02;
+    text-align: left;
+    cursor: pointer;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: rgba(#b7791f, 0.1); }
+  }
+
+  &-when {
+    flex-shrink: 0;
+    width: 5rem;
+    opacity: 0.7;
+    font-size: 0.75rem;
+  }
+
+  &-who {
+    flex: 1;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &-amount { flex-shrink: 0; font-weight: 800; }
+}
+
+@media (max-width: 640px) {
+  .kanban__pending-hint { display: none; }
+}
+
 // ─── Admin shell ──────────────────────────────────────────────────────────────
 .admin {
   min-height: 100vh;

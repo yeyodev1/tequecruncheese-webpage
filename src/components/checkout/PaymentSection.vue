@@ -15,6 +15,11 @@ defineProps<{
   /** Outside opening hours: every channel closes, not just the card button. */
   storeClosed: boolean
   closedMessage: string
+  /** Delivery order whose shipping fee could not be computed. */
+  deliveryUnresolved: boolean
+  /** Located but outside the delivery radius — WhatsApp is the way out. */
+  deliveryTooFar: boolean
+  deliveryBlockMessage: string
 }>()
 
 const emit = defineEmits<{
@@ -39,7 +44,7 @@ const emit = defineEmits<{
     <div class="co-pay-options">
       <button
         class="co-pay-btn co-pay-btn--payphone"
-        :disabled="storeClosed || !formValid || loading || !allFlavorsConfigured || isResolvingUrl"
+        :disabled="storeClosed || deliveryUnresolved || !formValid || loading || !allFlavorsConfigured || isResolvingUrl"
         @click="emit('checkout')"
       >
         <!-- Closed outranks every other state: no point naming a missing field
@@ -49,6 +54,14 @@ const emit = defineEmits<{
           <span>
             <strong>Cerrado por hoy</strong>
             <small>{{ closedMessage }}</small>
+          </span>
+        </template>
+        <!-- No shipping fee means no total, so there is nothing to charge yet. -->
+        <template v-else-if="deliveryUnresolved">
+          <i class="fa-solid fa-location-dot"></i>
+          <span>
+            <strong>{{ deliveryTooFar ? 'Fuera de nuestra zona' : 'Falta tu ubicación' }}</strong>
+            <small>{{ deliveryBlockMessage }}</small>
           </span>
         </template>
         <template v-else-if="loading">
@@ -87,6 +100,7 @@ const emit = defineEmits<{
 
       <div class="co-pay-divider">
         <span v-if="storeClosed">fuera de horario</span>
+        <span v-else-if="deliveryTooFar">coordinamos tu envío</span>
         <span v-else>{{ scheduledFor ? 'no disponible al programar' : 'o también puedes' }}</span>
       </div>
 

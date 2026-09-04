@@ -101,6 +101,31 @@ const {
 
 const grandTotal = computed(() => cart.totalPrice + (deliveryCost.value ?? 0))
 
+/**
+ * A delivery order the shipping fee cannot be computed for.
+ *
+ * The API refuses these outright now, because an order whose delivery nobody
+ * could price used to go out with free shipping. Surfacing it here means the
+ * customer is stopped at the map instead of at the payment button, with the
+ * fix (the map picker) sitting right where the problem is.
+ */
+const deliveryUnresolved = computed(
+  () => !isPickup.value && !isResolvingUrl.value && deliveryCost.value === null,
+)
+
+/** Located, but too far to deliver to — a different answer from "not found". */
+const deliveryTooFar = computed(() => deliveryUnresolved.value && outOfRange.value)
+
+const deliveryBlockMessage = computed(() => {
+  if (!deliveryUnresolved.value) return ''
+  if (deliveryTooFar.value) {
+    return `Estás a ${deliveryKm.value?.toFixed(1)} km de la tienda, fuera de nuestra zona de ` +
+      'entrega. Escríbenos por WhatsApp y coordinamos contigo.'
+  }
+  return 'Necesitamos tu ubicación para calcular el envío. Marca tu ubicación en el mapa, ' +
+    'arriba en “Método de entrega”.'
+})
+
 // ── Scheduled orders ──────────────────────────────────────
 /** ISO instant of the booked slot; null means "as soon as possible". */
 const scheduledFor = ref<string | null>(null)
@@ -140,6 +165,7 @@ async function checkout() {
   if (cart.isEmpty || loading.value || !formValid.value || !allFlavorsConfigured.value) return
   if (isResolvingUrl.value) return // wait for the authoritative delivery quote
   if (storeClosed.value) return // the API would refuse it anyway
+  if (deliveryUnresolved.value) return // so would an order with no shipping fee
   loading.value = true
   errorMsg.value = ''
   try {
@@ -265,6 +291,9 @@ function orderByWhatsApp() {
             :scheduled-label="scheduledLabel"
             :store-closed="storeClosed"
             :closed-message="closedMessage"
+            :delivery-unresolved="deliveryUnresolved"
+            :delivery-too-far="deliveryTooFar"
+            :delivery-block-message="deliveryBlockMessage"
             @checkout="checkout"
             @whatsapp="orderByWhatsApp"
             @clear-schedule="scheduledFor = null"

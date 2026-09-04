@@ -21,6 +21,7 @@ import { ref, shallowRef, computed, watch, onBeforeUnmount, nextTick } from 'vue
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { haversineKm, getDeliveryCost } from '@/composables/useDeliveryQuote'
+import { mapsService } from '@/services/maps.service'
 
 const props = defineProps<{
   open: boolean
@@ -46,8 +47,53 @@ const locateError = ref('')
 /** True while the map glides, so the pin can lift and the fee can hold still. */
 const isMoving = ref(false)
 
-const km = computed(() => haversineKm(ORIGIN.lat, ORIGIN.lng, centre.value.lat, centre.value.lng))
-const cost = computed(() => getDeliveryCost(km.value))
+/**
+ * Straight-line distance, shown only until the server answers.
+ *
+ * It is not what gets charged: Guayaquil and Samborondón are split by rivers,
+ * so a 6.6 km straight line is a 13.4 km ride. Quoting the local number as if
+ * it were final showed $4.00 on the map and then billed $6.00 at checkout.
+ */
+const localKm = computed(() =>
+  haversineKm(ORIGIN.lat, ORIGIN.lng, centre.value.lat, centre.value.lng),
+)
+
+/** The server's answer for the current pin — the same one that will be billed. */
+const quoted = ref<{ km: number | null; cost: number | null } | null>(null)
+const isQuoting = ref(false)
+
+const km = computed(() => quoted.value?.km ?? localKm.value)
+const cost = computed(() => (quoted.value ? quoted.value.cost : getDeliveryCost(localKm.value)))
+
+let quoteTimer: ReturnType<typeof setTimeout> | undefined
+let quoteSeq = 0
+
+/**
+ * Price the pin against the backend, which routes by road.
+ *
+ * Debounced and sequence-guarded: the map settles many times while someone is
+ * looking for their house, and a slow early answer must not overwrite a fast
+ * later one.
+ */
+function quoteCentre() {
+  clearTimeout(quoteTimer)
+  const mySeq = ++quoteSeq
+  isQuoting.value = true
+  quoteTimer = setTimeout(async () => {
+    const { lat, lng } = centre.value
+    try {
+      const result = await mapsService.quote(`${lat.toFixed(6)},${lng.toFixed(6)}`)
+      if (mySeq !== quoteSeq) return
+      quoted.value = { km: result.km, cost: result.deliveryCost }
+    } catch {
+      // Keep the straight-line estimate rather than showing nothing; the
+      // checkout re-quotes against the server anyway once the point is set.
+      if (mySeq === quoteSeq) quoted.value = null
+    } finally {
+      if (mySeq === quoteSeq) isQuoting.value = false
+    }
+  }, 550)
+}
 
 let nameTimer: ReturnType<typeof setTimeout> | undefined
 let nameSeq = 0
@@ -94,6 +140,7 @@ function syncCentre() {
   const c = m.getCenter()
   centre.value = { lat: c.lat, lng: c.lng }
   void nameCentre()
+  quoteCentre()
 }
 
 async function mount() {
@@ -128,7 +175,11 @@ async function mount() {
     .addTo(m)
     .bindTooltip('Tequecruncheese', { direction: 'top' })
 
-  m.on('movestart', () => { isMoving.value = true })
+  m.on('movestart', () => {
+    isMoving.value = true
+    // The previous answer belongs to the previous point.
+    quoted.value = null
+  })
   m.on('move', () => {
     const c = m.getCenter()
     centre.value = { lat: c.lat, lng: c.lng }
@@ -143,11 +194,16 @@ async function mount() {
   // just been shown, that measurement is of a zero-height box.
   setTimeout(() => m.invalidateSize(), 60)
   void nameCentre()
+  quoteCentre()
 }
 
 function destroy() {
   clearTimeout(nameTimer)
+  clearTimeout(quoteTimer)
   nameSeq++
+  quoteSeq++
+  quoted.value = null
+  isQuoting.value = false
   map.value?.remove()
   map.value = null
   address.value = ''
@@ -248,8 +304,15 @@ onBeforeUnmount(destroy)
             </div>
           </div>
 
-          <div class="lp__fee" :class="cost === null ? 'lp__fee--warn' : 'lp__fee--ok'">
-            <template v-if="cost === null">
+          <div
+            class="lp__fee"
+            :class="isQuoting ? 'lp__fee--pending' : cost === null ? 'lp__fee--warn' : 'lp__fee--ok'"
+          >
+            <template v-if="isQuoting">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <span>Calculando tu envío...</span>
+            </template>
+            <template v-else-if="cost === null">
               <i class="fa-solid fa-triangle-exclamation"></i>
               <span>Fuera de nuestra zona · coordinamos el envío contigo</span>
             </template>
@@ -461,6 +524,13 @@ onBeforeUnmount(destroy)
     border: 1.5px solid rgba($alert-warning, 0.45);
     color: #92400e;
     > i { color: $alert-warning; }
+  }
+
+  &--pending {
+    background: $alert-info-bg;
+    border: 1.5px solid rgba($alert-info, 0.4);
+    color: #2b6cb0;
+    > i { color: $alert-info; }
   }
 }
 

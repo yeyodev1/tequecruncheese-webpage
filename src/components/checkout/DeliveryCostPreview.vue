@@ -44,8 +44,10 @@ defineProps<{
       <template v-else>
         <i class="fa-solid fa-triangle-exclamation"></i>
         <div class="co-delivery-preview__body">
-          <strong>No pudimos calcular la distancia exacta</strong>
-          <span>Igual puedes continuar; coordinaremos el envío con tu referencia</span>
+          <strong>No pudimos ubicar ese link</strong>
+          <!-- There is a way out now, sitting directly below this notice, so
+               pointing at it beats shrugging and promising to sort it later. -->
+          <span>Marca tu ubicación en el mapa aquí abajo y calculamos tu envío al instante</span>
         </div>
       </template>
     </div>
